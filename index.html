@@ -264,6 +264,45 @@ function fieldHasConflict(f){
   Object.keys(by).forEach(function(s){ distinct[JSON.stringify(by[s].value)] = true; });
   return Object.keys(distinct).length > 1;
 }
+/* وضعیت هر دیتاپوینت برای نشانگر رنگی (آبی=تغییر کاربر، قرمز=تعارض، خنثی=داده اصلی) */
+function computeFieldState(f, project){
+  var by = latestPerSource(f);
+  var sources = Object.keys(by);
+  var distinct = {};
+  sources.forEach(function(s){ distinct[JSON.stringify(by[s].value)] = s; });
+  var hasConflict = Object.keys(distinct).length > 1;
+  var resolvedId = resolveFieldId(f, project);
+  var resolved = f.values.filter(function(v){ return v.id===resolvedId; })[0];
+  var modified = !!(f.pinnedId && resolved && resolved.source==='MANUAL_ENTRY');
+  /* مقدار اصلی: اولین مأخذ غیردستی با بالاترین اولویت */
+  var original = null;
+  var order = (project && project.sourcePriorityOverride) || SOURCE_PRIORITY;
+  for (var i=0;i<order.length;i++){
+    if (by[order[i]] && order[i]!=='MANUAL_ENTRY'){ original = by[order[i]].value; break; }
+  }
+  var status = hasConflict ? 'conflict' : (modified ? 'modified' : 'original');
+  return {
+    status: status,
+    hasConflict: hasConflict,
+    modified: modified,
+    resolvedId: resolvedId,
+    resolved: resolved,
+    sourceCount: sources.length,
+    sources: sources,
+    changedValue: resolved ? resolved.value : null,
+    originalValue: original
+  };
+}
+function fieldStateLabel(state){
+  if (state.status==='conflict') return 'تعارض منابع';
+  if (state.status==='modified') return 'تغییر توسط کاربر';
+  return 'داده اصلی';
+}
+function fieldStateDot(state){
+  if (state.status==='original') return '';
+  var cls = state.status==='conflict' ? 'red' : 'blue';
+  return '<span class="data-state-dot '+cls+'" title="'+fieldStateLabel(state)+'" style="display:inline-block;width:9px;height:9px;border-radius:50%;flex:none;"></span> ';
+}
 function fieldVal(project, key){
   var f = project.fields[key];
   if (!f) return null;
@@ -13263,6 +13302,7 @@ if(resolvedVal && resolvedVal.confidence!=null){
 
 }
     var conflict = fieldHasConflict(f);
+    var state = computeFieldState(f, p);
     var expanded = UI.expandedField===key;
     var displayVal = resolvedVal ? (f.dataType==='NUMBER' ? fmtNum(resolvedVal.value, 3) : resolvedVal.value) : '—';
     
@@ -13290,14 +13330,7 @@ if(resolvedVal && resolvedVal.confidence!=null){
     return '<tr class="field-row" onclick="toggleField(\''+key+'\')">'+
       '<td>'+esc(f.label)+'</td>'+
       '<td class="num-cell">'+numSpan(esc(displayVal))+'</td>'+
-      '<td>'+(conflict
-?
-'<span class="pill conflict">تعارض منابع</span>'
-:
-'<span class="pill ok">تایید شده</span>'
-)
-+
-confidenceText +
+      '<td>' + fieldStateDot(state) +
       '<td style="color:var(--ink-faint);font-size:11px;">'+(expanded?'بستن ▲':'جزئیات و تاریخچه ▼')+'</td>'+
     '</tr>' + detail;
   }).join('');

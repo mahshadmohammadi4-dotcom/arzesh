@@ -323,6 +323,11 @@
   .pill.source.EXTERNAL_API{ color:var(--cat-wl); background:var(--cat-wl-bg); }
   .pill.source.ACCOUNTING_SYSTEM{ color:var(--cat-fs); background:var(--cat-fs-bg); }
   .pill.source.AI_SUGGESTED{ color:var(--ink-muted); background:var(--surface-2); }
+  /* نشانگر وضعیت داده (آبی=تغییر کاربر، قرمز=تعارض، خنثی=داده اصلی) */
+  .data-state-dot.red{ background:var(--risk); box-shadow:0 0 0 2px var(--risk-tint); }
+  .data-state-dot.blue{ background:#2f80ed; box-shadow:0 0 0 2px #e3edfb; }
+  .data-state-dot.muted{ background:var(--muted); }
+  @media (prefers-color-scheme: dark){ .data-state-dot.blue{ background:#5aa2f0; box-shadow:0 0 0 2px #1b2a44; } }
   @media (prefers-color-scheme: dark){ .pill.source.DOCUMENT_OCR{ color:#e0ac67; background:#332715; } }
   :root[data-theme="dark"] .pill.source.DOCUMENT_OCR{ color:#e0ac67; background:#332715; }
   :root[data-theme="light"] .pill.source.DOCUMENT_OCR{ color:#a1631f; background:#fbeee0; }

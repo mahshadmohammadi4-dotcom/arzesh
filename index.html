@@ -298,10 +298,10 @@ function fieldStateLabel(state){
   if (state.status==='modified') return 'تغییر توسط کاربر';
   return 'داده اصلی';
 }
-function fieldStateDot(state){
+function fieldStateDot(state, pid, key){
   if (state.status==='original') return '';
   var cls = state.status==='conflict' ? 'red' : 'blue';
-  return '<span class="data-state-dot '+cls+'" title="'+fieldStateLabel(state)+'" style="display:inline-block;width:9px;height:9px;border-radius:50%;flex:none;"></span> ';
+  return '<span class="data-state-dot '+cls+'" title="'+fieldStateLabel(state)+'" style="display:inline-block;width:9px;height:9px;border-radius:50%;flex:none;cursor:pointer;" onclick="event.stopPropagation();openFieldState(\''+pid+'\',\''+key+'\')"></span> ';
 }
 /* نگاشت شاخص به فیلدهای تغذیه‌کننده آن (برای نمایش «داده‌های پایه» در جزئیات شاخص) */
 var KPI_SOURCE_FIELDS = {
@@ -340,7 +340,7 @@ function buildFieldSummaryChip(p, key){
   var state = computeFieldState(f, p);
   var resolved = state.resolved;
   var valText = resolved ? (f.dataType==='NUMBER' ? fmtNum(resolved.value, 2) : esc(resolved.value)) : '—';
-  return '<span class="pill source DOCUMENT_OCR" style="gap:6px;">'+fieldStateDot(state)+
+  return '<span class="pill source DOCUMENT_OCR" style="gap:6px;cursor:pointer;" onclick="event.stopPropagation();openFieldState(\''+p.id+'\',\''+key+'\')" title="مشاهده منابع و تاریخچه">'+fieldStateDot(state, p.id, key)+
     '<span style="font-weight:600;">'+esc(f.label)+':</span> '+numSpan(valText)+'</span>';
 }
 function fieldVal(project, key){
@@ -2054,7 +2054,7 @@ function personName(key){ return DB.people[key] ? DB.people[key].name : key; }
 /* =========================================================================
    وضعیت واسط کاربری
    ========================================================================= */
-var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null };
+var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null };
 
 /* =========================================================================
    نقش‌ها و سطوح دسترسی (RBAC)
@@ -2174,7 +2174,7 @@ function toggleField(key){ UI.expandedField = (UI.expandedField===key) ? null : 
 function resetDemo(){
   if (!confirm('بازنشانی نسخه‌ی نمایشی به حالت اولیه؟ تمام تغییرات شما پاک می‌شود.')) return;
   seed();
-  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null };
+  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null };
   render();
 }
 
@@ -13376,7 +13376,7 @@ if(resolvedVal && resolvedVal.confidence!=null){
     return '<tr class="field-row" onclick="toggleField(\''+key+'\')">'+
       '<td>'+esc(f.label)+'</td>'+
       '<td class="num-cell">'+numSpan(esc(displayVal))+'</td>'+
-      '<td>' + fieldStateDot(state) +
+      '<td>' + fieldStateDot(state, p.id, key) +
       '<td style="color:var(--ink-faint);font-size:11px;">'+(expanded?'بستن ▲':'جزئیات و تاریخچه ▼')+'</td>'+
     '</tr>' + detail;
   }).join('');
@@ -26726,6 +26726,47 @@ function buildWatchlistPickerModal(){
    ========================================================================= */
 function openKpiDetail(pid, key){ UI.kpiDetail = { pid:pid, key:key }; render(); }
 function closeKpiDetail(){ UI.kpiDetail = null; render(); }
+function openFieldState(pid, key){ UI.fieldState = { pid:pid, key:key }; render(); }
+function closeFieldState(){ UI.fieldState = null; render(); }
+function buildFieldStateModal(){
+  var d = UI.fieldState;
+  if (!d) return '';
+  var p = DB.projects[d.pid];
+  var key = d.key;
+  var f = p && p.fields[key];
+  if (!f){ UI.fieldState = null; return ''; }
+  var state = computeFieldState(f, p);
+  var canEdit = can('editFields');
+  var items = f.values.slice().sort(function(a,b){ return a.at-b.at; }).map(function(v){
+    var pinned = f.pinnedId===v.id;
+    return '<div class="value-item'+(pinned?' pinned':'')+'">'+
+      '<span class="pill source '+v.source+'">'+SOURCE_LABEL[v.source]+'</span>'+
+      '<span class="v">'+numSpan(f.dataType==='NUMBER'?fmtNum(v.value,2):esc(v.value))+'</span>'+
+      (v.confidence!=null ? '<span class="pill muted">اطمینان '+Math.round(v.confidence*100)+'%</span>' : '')+
+      '<span style="font-size:10.5px;color:var(--ink-faint);">'+fmtDate(v.at)+'</span>'+
+      (pinned ? '<span class="pill ok">انتخابشده</span>' : (canEdit ? '<button class="btn small" onclick="pinValue(\''+d.pid+'\',\''+key+'\',\''+v.id+'\');closeFieldState()">انتخاب این مقدار</button>' : ''))+
+    '</div>';
+  }).join('');
+  var inputId = 'fieldstate-edit-'+key;
+  var editForm = canEdit
+    ? '<div class="inline-form" style="margin-top:12px;"><input id="'+inputId+'" type="text" placeholder="مقدار جدید (ورود دستی)"/>'+
+      '<button class="btn small primary" onclick="submitDirectEdit(\''+d.pid+'\',\''+key+'\',\''+inputId+'\');closeFieldState()">ذخیره و انتخاب</button></div>'
+    : gateNote('نقش فعلی («'+DB.people[UI.currentRole].role+'») اجازه ویرایش این داده را ندارد.');
+  var note = '';
+  if (state.status==='conflict'){
+    note = '<div class="value-item" style="border-color:var(--risk);background:var(--risk-tint);"><span class="pill conflict">تعارض منابع</span><span class="v" style="flex:1;">بین منابع مختلف مقادیر متفاوت ثبت شده؛ یکی را انتخاب کنید یا مقدار را دستی اصلاح کنید.</span></div>';
+  } else if (state.status==='modified'){
+    note = '<div class="value-item" style="border-color:var(--accent);background:var(--accent-tint);"><span class="pill source MANUAL_ENTRY">تغییر توسط کاربر</span><span class="v" style="flex:1;">مقدار نهایی توسط کاربر انتخاب شده است.</span></div>';
+  }
+  return '<div class="modal-backdrop" onclick="if(event.target===this) closeFieldState()"><div class="modal-box">'+
+    '<div class="modal-head"><h3>'+esc(f.label)+'</h3><button class="btn small ghost" onclick="closeFieldState()">✕</button></div>'+
+    note+
+    '<div style="margin-top:12px;"><div style="font-size:11.5px;font-weight:700;margin-bottom:8px;color:var(--ink-muted);">منابع و تاریخچه مقادیر</div>'+
+    '<div class="value-list">'+items+'</div></div>'+
+    editForm+
+    '<div class="modal-actions"><span></span><button class="btn small" onclick="closeFieldState()">بستن</button></div>'+
+  '</div></div>';
+}
 function buildKpiSourceFieldsSection(p, kpiKey){
   var keys = KPI_SOURCE_FIELDS[kpiKey];
   if (!keys || !keys.length) return '';
@@ -26736,8 +26777,8 @@ function buildKpiSourceFieldsSection(p, kpiKey){
     var resolved = state.resolved;
     var valText = resolved ? (f.dataType==='NUMBER' ? fmtNum(resolved.value, 2) : esc(resolved.value)) : '—';
     var srcBadge = resolved ? '<span class="pill source '+resolved.source+'">'+SOURCE_LABEL[resolved.source]+'</span>' : '';
-    return '<div class="value-item" style="gap:8px;">'+
-      fieldStateDot(state)+
+    return '<div class="value-item" style="gap:8px;cursor:pointer;" onclick="event.stopPropagation();openFieldState(\''+p.id+'\',\''+k+'\')" title="مشاهده منابع و تاریخچه">'+
+      fieldStateDot(state, p.id, k)+
       '<span class="v" style="flex:1;word-break:break-word;font-weight:600;">'+esc(f.label)+'</span>'+
       '<span class="num" style="font-family:var(--font-num);font-weight:700;">'+numSpan(valText)+'</span>'+
       srcBadge+
@@ -26835,6 +26876,11 @@ document.getElementById('screenRoot').innerHTML = localizeHtml(
 
   (UI.kpiDetail
     ? buildKpiDetailModal()
+    : ''
+  )+
+
+  (UI.fieldState
+    ? buildFieldStateModal()
     : ''
   )+
 

@@ -11846,9 +11846,9 @@ function buildBADataReadiness(p){
 
           '<button '+
             'class="btn" '+
-            'onclick="setTab(\'spreadsheet\')">'+
+            'onclick="setTab(\'company-profile\')">'+
 
-            'صفحه گسترده مادر'+
+            'پرونده شرکت'+
 
           '</button>'+
 
@@ -13869,18 +13869,10 @@ function buildPlanTab(p){
 
 /* ---- گردآوری اطلاعات (اسناد و مدارک) ---- */
 function buildSourceOverview(p){
-  var hasQuestionnaire = true;
   var hasApiFields = Object.keys(p.fields).some(function(k){ return k.indexOf('macro.')===0; });
   return '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:20px;">'+
     '<div class="source-row"><div class="t1w"><div class="t1">بارگذاری مستندات</div><div class="t2">فهرست اسناد در پایین همین صفحه</div></div><span class="pill ok">فعال</span></div>'+
     '<div class="source-row"><div class="t1w"><div class="t1">اتصال سیستم حسابداری</div><div class="t2">دریافت خودکار صورت‌های مالی</div></div><span class="pill disabled">توسعه آینده</span></div>'+
-    '<div class="source-row"><div class="t1w"><div class="t1">ورود مستقیم داده</div><div class="t2">تکمیل پرسشنامه جامع</div></div>'+
-      (hasQuestionnaire
-  ? '<button class="btn small ghost" onclick="openProject(\''+p.id+'\',\'questionnaire\')">'+
-      (p.type==='BUSINESS_ANALYSIS' ? 'پرسشنامه هوشمند' : 'پرسشنامه')+
-    '</button>'
-  : '<span class="pill disabled">غیرفعال</span>')+
-    '</div>'+
     '<div class="source-row"><div class="t1w"><div class="t1">اتصال API</div><div class="t2">دریافت داده‌های کلان از منابع مرجع</div></div>'+
       (!hasApiFields ? '<span class="pill disabled">غیرقابل استفاده</span>' :
         (can('uploadDocs') ? '<button class="btn small" onclick="fetchApiData(\''+p.id+'\')">دریافت خودکار</button>' : '<span class="pill muted">نیازمند دسترسی بارگذاری</span>'))+
@@ -24043,49 +24035,6 @@ function buildProjectView(){
 
   ]);
 
-
-
-  /*
-    Master Data قبلی را حذف نمی‌کنیم
-  */
-
-  if(
-    can('editFields')
-  ){
-
-    var fsConflictCount =
-      countFieldConflicts(p);
-
-
-    var fsSpreadsheetLabel =
-
-      'داده‌های تجمیعی'+
-
-      (
-        fsConflictCount
-          ?
-          '<span class="pill conflict" style="margin-inline-start:6px;">'+
-            fsConflictCount+
-          '</span>'
-          :
-          ''
-      );
-
-
-    groups[0].items.push([
-
-      'spreadsheet',
-
-      fsSpreadsheetLabel,
-
-      ICONS.grid
-
-    ]);
-
-  }
-
-
-
   /*
     نتایج
   */
@@ -24184,59 +24133,6 @@ else{
     ICONS.doc
 
   ]);
-
-
-  groups[0].items.push([
-
-    'questionnaire',
-
-    p.type==='BUSINESS_ANALYSIS'
-      ?
-      'پرسشنامه هوشمند'
-      :
-      'پرسشنامه',
-
-    ICONS.tag
-
-  ]);
-
-
-
-  if(
-    can('editFields')
-  ){
-
-    var conflictCount =
-      countFieldConflicts(p);
-
-
-    var spreadsheetLabel =
-
-      'صفحه گسترده مادر'+
-
-      (
-        conflictCount
-          ?
-          '<span class="pill conflict" style="margin-inline-start:6px;">'+
-            conflictCount+
-          '</span>'
-          :
-          ''
-      );
-
-
-    groups[0].items.push([
-
-      'spreadsheet',
-
-      spreadsheetLabel,
-
-      ICONS.sliders
-
-    ]);
-
-  }
-
 
 
   groups[1].items.push([
@@ -24530,8 +24426,7 @@ else if(
 
   }
 
-}  else if (UI.tab==='spreadsheet') body = buildSpreadsheetTab(p);
-  else if (UI.tab==='access') body = buildAccessTab(p);
+}  else if (UI.tab==='access') body = buildAccessTab(p);
   else if (UI.tab==='report') body = buildReportTab(p);
   else if (UI.tab==='plan') body = buildPlanTab(p);
 

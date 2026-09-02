@@ -298,6 +298,15 @@ function fieldStateLabel(state){
   if (state.status==='modified') return 'تغییر توسط کاربر';
   return 'داده اصلی';
 }
+/* باز کردن بالای کارت‌های مشتق‌شده (سهامداران/هیئت‌مدیره/نیروی انسانی) برای ویرایش فیلد مأخذ */
+function visualEditableChip(p, key){
+  var f = p.fields[key];
+  if (!f) return '';
+  var state = computeFieldState(f, p);
+  return '<span class="pill source AI_SUGGESTED" style="gap:6px;cursor:pointer;font-weight:600;" '+
+    'onclick="event.stopPropagation();openFieldState(\''+p.id+'\',\''+key+'\')" title="مشاهده و ویرایش '+esc(f.label)+'">'+
+    fieldStateDot(state, p.id, key)+'ویرایش</span>';
+}
 function fieldStateDot(state, pid, key){
   if (state.status==='original') return '';
   var cls = state.status==='conflict' ? 'red' : 'blue';
@@ -2054,7 +2063,7 @@ function personName(key){ return DB.people[key] ? DB.people[key].name : key; }
 /* =========================================================================
    وضعیت واسط کاربری
    ========================================================================= */
-var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null };
+var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile' };
 
 /* =========================================================================
    نقش‌ها و سطوح دسترسی (RBAC)
@@ -2168,13 +2177,13 @@ function confirmAddToWatchlist(){
   UI.watchlistPicker = null;
   openWatchlist(wid);
 }
-function setTab(tab){ UI.tab = tab; UI.expandedField=null; UI.tocDraft=null; UI.expandedAnalysis=null; render(); }
+function setTab(tab){ UI.tab = tab; UI.expandedField=null; UI.tocDraft=null; UI.expandedAnalysis=null; UI.profileSubTab='profile'; render(); }
 function toggleField(key){ UI.expandedField = (UI.expandedField===key) ? null : key; render(); }
 
 function resetDemo(){
   if (!confirm('بازنشانی نسخه‌ی نمایشی به حالت اولیه؟ تمام تغییرات شما پاک می‌شود.')) return;
   seed();
-  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null };
+  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile' };
   render();
 }
 
@@ -3051,10 +3060,10 @@ function buildShareholdersVisual(p){
 
   return `
 
-<div class="company-visual-card">
+<div class="company-visual-card" style="cursor:pointer;" onclick="openFieldState('${p.id}','company.shareholders')" title="مشاهده و ویرایش سهامداران">
 
   <div class="profile-card-title">
-    ساختار سهامداری
+    ساختار سهامداری ${visualEditableChip(p,'company.shareholders')}
   </div>
 
   ${rows}
@@ -3180,10 +3189,10 @@ function buildBoardVisual(p){
 
   return `
 
-<div class="company-visual-card">
+<div class="company-visual-card" style="cursor:pointer;" onclick="openFieldState('${p.id}','company.boardMembers')" title="مشاهده و ویرایش هیئت‌مدیره">
 
   <div class="profile-card-title">
-    هیئت‌مدیره و مدیران ارشد
+    هیئت‌مدیره و مدیران ارشد ${visualEditableChip(p,'company.boardMembers')}
   </div>
 
   <div class="people-grid">
@@ -3330,11 +3339,11 @@ function buildHrVisual(p){
 
   return `
 
-<div class="company-visual-card">
+<div class="company-visual-card" style="cursor:pointer;" onclick="openFieldState('${p.id}','company.hrComposition')" title="مشاهده و ویرایش نیروی انسانی">
 
   <div class="profile-card-title">
 
-    نیروی انسانی
+    نیروی انسانی ${visualEditableChip(p,'company.hrComposition')}
 
     ${
       total!=null
@@ -10390,6 +10399,13 @@ function buildBAFinancialDataTab(p){
 
 }
 
+function setProfileSubTab(st){ UI.profileSubTab = st; render(); }
+function buildOrgChartPage(p){
+  return '<div class="section-head">'+
+    '<div><h3>چارت سازمانی</h3><span class="hint">ساختار مدیریتی و سطوح سازمانی شرکت</span></div>'+
+    '<button class="btn small" onclick="setProfileSubTab(\'profile\')">← بازگشت به پرونده شرکت</button>'+
+  '</div>'+ buildOrganizationChart(p);
+}
 function buildCompanyProfileTab(p){
 
   function profileRow(label,key){
@@ -10404,6 +10420,9 @@ function buildCompanyProfileTab(p){
 
     var source =
       resolvedValueInfo(p,key);
+
+    var state =
+      computeFieldState(f,p);
 
     var display =
       value==null
@@ -10436,7 +10455,14 @@ function buildCompanyProfileTab(p){
 
     return (
 
-      '<div class="value-item">'+
+      '<div class="value-item" style="gap:8px;cursor:pointer;" '+
+      'onclick="event.stopPropagation();openFieldState(\''+
+      p.id+
+      '\',\''+
+      key+
+      '\')" title="مشاهده منابع و تاریخچه">'+
+
+        fieldStateDot(state,p.id,key)+
 
         '<span style="min-width:130px;color:var(--ink-muted);">'+
         label+
@@ -10460,6 +10486,8 @@ function buildCompanyProfileTab(p){
   var company =
     DB.companies[p.companyKey];
 
+  var sub = UI.profileSubTab || 'profile';
+  if (sub === 'org') return buildOrgChartPage(p);
 
   return (
 
@@ -10473,6 +10501,11 @@ function buildCompanyProfileTab(p){
         'اطلاعات ثبتی، مالکیتی، مدیریتی و اعتباری شرکت'+
         '</span>'+
 
+      '</div>'+
+
+      '<div class="inline-form" style="flex:none;">'+
+        '<span class="type-chip ba">'+(UI.profileSubTab==='org'?'چارت سازمانی':'پرونده شرکت')+'</span>'+
+        '<button class="btn small" onclick="setProfileSubTab(\'org\')">چارت سازمانی</button>'+
       '</div>'+
 
     '</div>'+
@@ -10621,8 +10654,6 @@ function buildCompanyProfileTab(p){
         buildShareholdersVisual(p)+
 
 buildBoardVisual(p)+
-
-buildOrganizationChart(p)+
 
 buildHrVisual(p)+
 

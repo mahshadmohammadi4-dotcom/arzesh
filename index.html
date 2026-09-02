@@ -303,6 +303,46 @@ function fieldStateDot(state){
   var cls = state.status==='conflict' ? 'red' : 'blue';
   return '<span class="data-state-dot '+cls+'" title="'+fieldStateLabel(state)+'" style="display:inline-block;width:9px;height:9px;border-radius:50%;flex:none;"></span> ';
 }
+/* نگاشت شاخص به فیلدهای تغذیه‌کننده آن (برای نمایش «داده‌های پایه» در جزئیات شاخص) */
+var KPI_SOURCE_FIELDS = {
+  revenue_growth:['financials.revenueCurrentYear','financials.revenuePriorYear'],
+  net_profit_margin:['financials.netProfit','financials.revenueCurrentYear'],
+  gross_profit_margin:['financials.grossProfit','financials.revenueCurrentYear'],
+  operating_margin:['financials.operatingProfit','financials.revenueCurrentYear'],
+  current_ratio:['financials.currentAssets','financials.currentLiabilities'],
+  quick_ratio:['financials.currentAssets','financials.inventory','financials.currentLiabilities'],
+  working_capital:['financials.currentAssets','financials.currentLiabilities'],
+  debt_to_equity:['financials.totalLiabilities','financials.totalEquity'],
+  debt_ratio:['financials.totalLiabilities','financials.totalAssets'],
+  roe:['financials.netProfit','financials.totalEquity'],
+  roa:['financials.netProfit','financials.totalAssets'],
+  asset_turnover:['financials.revenueCurrentYear','financials.totalAssets'],
+  npv:['feasibility.discountRate','feasibility.initialInvestment','feasibility.cashFlowYear1','feasibility.cashFlowYear2','feasibility.cashFlowYear3','feasibility.cashFlowYear4','feasibility.cashFlowYear5'],
+  irr:['feasibility.initialInvestment','feasibility.cashFlowYear1','feasibility.cashFlowYear2','feasibility.cashFlowYear3','feasibility.cashFlowYear4','feasibility.cashFlowYear5'],
+  payback_period:['feasibility.initialInvestment','feasibility.cashFlowYear1','feasibility.cashFlowYear2','feasibility.cashFlowYear3','feasibility.cashFlowYear4','feasibility.cashFlowYear5'],
+  benefit_cost_ratio:['feasibility.discountRate','feasibility.initialInvestment','feasibility.cashFlowYear1','feasibility.cashFlowYear2','feasibility.cashFlowYear3','feasibility.cashFlowYear4','feasibility.cashFlowYear5'],
+  actual_irr:['feasibility.initialInvestment','feasibilityActuals.cashFlowYear1','feasibilityActuals.cashFlowYear2','feasibilityActuals.cashFlowYear3','feasibilityActuals.cashFlowYear4','feasibilityActuals.cashFlowYear5'],
+  actual_npv:['feasibility.discountRate','feasibility.initialInvestment','feasibilityActuals.cashFlowYear1','feasibilityActuals.cashFlowYear2','feasibilityActuals.cashFlowYear3','feasibilityActuals.cashFlowYear4','feasibilityActuals.cashFlowYear5'],
+  performance_variance:['feasibility.initialInvestment','feasibility.cashFlowYear1','feasibility.cashFlowYear2','feasibility.cashFlowYear3','feasibility.cashFlowYear4','feasibility.cashFlowYear5','feasibilityActuals.cashFlowYear1','feasibilityActuals.cashFlowYear2'],
+  enterprise_value:['valuation.discountRate','valuation.terminalGrowthRate','valuation.freeCashFlowYear1','valuation.freeCashFlowYear2','valuation.freeCashFlowYear3'],
+  equity_value:['valuation.discountRate','valuation.terminalGrowthRate','valuation.freeCashFlowYear1','valuation.freeCashFlowYear2','valuation.freeCashFlowYear3','valuation.netDebt'],
+  value_per_share:['valuation.discountRate','valuation.terminalGrowthRate','valuation.freeCashFlowYear1','valuation.freeCashFlowYear2','valuation.freeCashFlowYear3','valuation.netDebt','valuation.sharesOutstanding']
+};
+function fieldValWithState(project, key){
+  var f = project.fields[key];
+  if (!f) return null;
+  return { state: computeFieldState(f, project), field: f };
+}
+/* چیپ خلاصه یک فیلد با نشانگر وضعیت (برای نمای کلی) */
+function buildFieldSummaryChip(p, key){
+  var f = p.fields[key];
+  if (!f) return '';
+  var state = computeFieldState(f, p);
+  var resolved = state.resolved;
+  var valText = resolved ? (f.dataType==='NUMBER' ? fmtNum(resolved.value, 2) : esc(resolved.value)) : '—';
+  return '<span class="pill source DOCUMENT_OCR" style="gap:6px;">'+fieldStateDot(state)+
+    '<span style="font-weight:600;">'+esc(f.label)+':</span> '+numSpan(valText)+'</span>';
+}
 function fieldVal(project, key){
   var f = project.fields[key];
   if (!f) return null;
@@ -12527,6 +12567,12 @@ function buildBACompanyAISummary(p){
 
       '</div>'+
 
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">'+
+        buildFieldSummaryChip(p,'company.registeredCapital')+
+        buildFieldSummaryChip(p,'company.employeeCount')+
+        buildFieldSummaryChip(p,'company.nationalId')+
+        buildFieldSummaryChip(p,'company.ceoName')+
+      '</div>'+
 
     '</div>'
 
@@ -26680,6 +26726,26 @@ function buildWatchlistPickerModal(){
    ========================================================================= */
 function openKpiDetail(pid, key){ UI.kpiDetail = { pid:pid, key:key }; render(); }
 function closeKpiDetail(){ UI.kpiDetail = null; render(); }
+function buildKpiSourceFieldsSection(p, kpiKey){
+  var keys = KPI_SOURCE_FIELDS[kpiKey];
+  if (!keys || !keys.length) return '';
+  var rows = keys.map(function(k){
+    var f = p.fields[k];
+    if (!f) return '';
+    var state = computeFieldState(f, p);
+    var resolved = state.resolved;
+    var valText = resolved ? (f.dataType==='NUMBER' ? fmtNum(resolved.value, 2) : esc(resolved.value)) : '—';
+    var srcBadge = resolved ? '<span class="pill source '+resolved.source+'">'+SOURCE_LABEL[resolved.source]+'</span>' : '';
+    return '<div class="value-item" style="gap:8px;">'+
+      fieldStateDot(state)+
+      '<span class="v" style="flex:1;word-break:break-word;font-weight:600;">'+esc(f.label)+'</span>'+
+      '<span class="num" style="font-family:var(--font-num);font-weight:700;">'+numSpan(valText)+'</span>'+
+      srcBadge+
+    '</div>';
+  }).join('');
+  return '<div style="margin-top:14px;"><div style="font-size:11.5px;font-weight:700;margin-bottom:6px;color:var(--ink-muted);">داده‌های تغذیه‌کننده این شاخص</div>'+
+    '<div class="value-list">'+rows+'</div></div>';
+}
 function buildKpiDetailModal(){
   var d = UI.kpiDetail, p = d && DB.projects[d.pid];
   if (!p || !p.kpiState[d.key]){ UI.kpiDetail = null; return ''; }
@@ -26706,6 +26772,7 @@ function buildKpiDetailModal(){
     '<div class="kpi-modal-stat"><span class="l">اهمیت شاخص</span><span class="v" style="color:'+imp.color+';font-family:inherit;">'+imp.label+'</span></div>'+
     (status ? '<div class="kpi-modal-stat"><span class="l">وضعیت</span><span class="v" style="color:var('+statusVar+');font-family:inherit;">'+heatLabel(status)+'</span></div>' : '')+
     (def.formulaText ? '<div style="margin-top:14px;"><div style="font-size:11.5px;font-weight:700;margin-bottom:6px;color:var(--ink-muted);">فرمول محاسبه</div><div class="kpi-modal-formula">'+esc(def.formulaText)+'</div></div>' : '')+
+    buildKpiSourceFieldsSection(p, d.key)+
     '<div class="modal-actions"><span></span><button class="btn small" onclick="closeKpiDetail()">بستن</button></div>'+
   '</div></div>';
 }

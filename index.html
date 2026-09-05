@@ -25318,11 +25318,11 @@ function quotaBlockReason(type){
   if (pq && pq.used>=pq.total) return 'سهمیه اختصاصی شما برای این نوع خدمت تکمیل شده است. برای افزایش سهمیه با مدیر سامانه هماهنگ کنید.';
   return null;
 }
-function openWizard(){ UI.wizard = { step:1, type:null, companyMode:'existing', companyKey:Object.keys(DB.companies)[0], newCompanyName:'',projectTitle:'', preFsExists:null, preFsFile:null, baseAnswers:{} }; render(); }
+function openWizard(){ UI.wizard = { step:1, type:null, companyMode:'existing', companyKey:Object.keys(DB.companies)[0], newCompanyName:'',projectTitle:'', preFsExists:null, preFsFile:null, baseAnswers:{}, description:'' }; render(); }
 function openWizardWithType(type){
   var reason = quotaBlockReason(type);
   if (reason){ alert(reason); return; }
-  UI.wizard = { step:2, type:type, companyMode:'existing', companyKey:Object.keys(DB.companies)[0], newCompanyName:'',projectTitle:'', preFsExists:null, preFsFile:null, baseAnswers:{} };
+  UI.wizard = { step:2, type:type, companyMode:'existing', companyKey:Object.keys(DB.companies)[0], newCompanyName:'',projectTitle:'', preFsExists:null, preFsFile:null, baseAnswers:{}, description:'' };
   render();
 }
 function closeWizard(){ UI.wizard = null; render(); }
@@ -25956,7 +25956,9 @@ function wizCreate(){
 
 
 
-    planStatus:null
+    planStatus:null,
+
+    feasibilityDescription:(w.description||'').trim()
 
   };
 
@@ -26523,11 +26525,39 @@ function buildWizard(){
               '">'+
 
                 'در صورت خالی بودن، عنوان پروژه به‌صورت خودکار از نام شرکت ساخته می‌شود.'+
-
               '</div>'+
 
+            '</div>'+
+
+            /* ===============================================
+               توضیح طرح (کوئری) — ورودی اول کارفرما
+               =============================================== */
+
+            '<div style="margin-top:20px;">'+
+
+              '<label>'+
+                'توضیح طرح (این را توصیف کنید)'+
+              '</label>'+
+
+              '<textarea '+
+                'class="wiz-field" '+
+                'rows="4" '+
+                'placeholder="مثلاً: قصد داریم یک خط تولید جدید برای محصول X راه‌اندازی کنیم؛ ظرفیت سالانه ۱۰۰۰۰ واحد، مواد اولیه از تأمین‌کننده داخلی، سرمایه‌گذاری حدود ۵ میلیارد ریال و تأمین مالی از تسهیلات بانکی…"'+
+                'oninput="UI.wizard.description=this.value"'+
+              '>'+
+                esc(w.description || '')+
+              '</textarea>'+
+
+              '<div style="'+
+                'font-size:10.5px;'+
+                'color:var(--ink-faint);'+
+                'margin-top:6px;'+
+              '">'+
+                'سیستم بر اساس این توصیف، پرسشنامه و جدول‌های طرح را پیش‌پُر می‌کند؛ سپس هر مرحله را تأیید می‌کنید و با «بعدی» جلو می‌روید.'+
+              '</div>'+
 
             '</div>'+
+
 
 
 

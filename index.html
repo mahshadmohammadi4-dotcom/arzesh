@@ -23443,7 +23443,14 @@ function buildFSFixedInvestmentTab(p){
       p,
       'other',
       'سایر هزینه‌های سرمایه‌ای'
-    )
+    )+
+
+    fsBuildFixedCustomTables(p)+
+
+    '<div class="edit-actions" style="margin-top:14px;">'+
+      '<button class="btn small" onclick="fsAddFixedCategory(\''+p.id+'\')">+ افزودن جدول سفارشی</button>'+
+      '<span class="hint">جدول‌های سفارشی (مثل تجهیزات خاص) را خودتان بسازید و ردیف اضافه/حذف کنید.</span>'+
+    '</div>'
 
   );
 
@@ -23451,6 +23458,76 @@ function buildFSFixedInvestmentTab(p){
 
 
 
+function fsEnsureFixedObject(p){
+  var d = ensureFSFixedInvestmentData(p);
+  if (!d) return null;
+  if (!Array.isArray(d.customTables)) d.customTables = [];
+  return d;
+}
+function fsFindCustomTable(p, id){
+  var d = ensureFSFixedInvestmentData(p);
+  if (!d || !Array.isArray(d.customTables)) return null;
+  var found = null; d.customTables.forEach(function(t){ if (t.id===id) found=t; });
+  return found;
+}
+function fsAddFixedCategory(pid){
+  var p = DB.projects[pid], d = fsEnsureFixedObject(p);
+  if (!d) return;
+  d.customTables.push({ id:'CT-'+uid(), title:'جدول سفارشی', columns:[{label:'ستون ۱'},{label:'ستون ۲'}], rows:[['','']] });
+  render();
+}
+function fsSetCustom(title, pid, id){
+  var t = fsFindCustomTable(DB.projects[pid], id); if(!t) return; t.title = String(title||'').trim() || 'جدول سفارشی'; render();
+}
+function fsSetColLabel(pid, id, ci, label){
+  var t = fsFindCustomTable(DB.projects[pid], id); if(!t||!t.columns[ci]) return; t.columns[ci].label = label || ('ستون '+(ci+1)); render();
+}
+function fsSetCell(pid, id, ri, ci, val){
+  var t = fsFindCustomTable(DB.projects[pid], id); if(!t||!t.rows[ri]) return; t.rows[ri][ci] = val; render();
+}
+function fsAddCustomColumn(pid, id){
+  var t = fsFindCustomTable(DB.projects[pid], id); if(!t) return; t.columns.push({label:'ستون '+(t.columns.length+1)}); t.rows.forEach(function(r){ r.push(''); }); render();
+}
+function fsAddCustomRow(pid, id){
+  var t = fsFindCustomTable(DB.projects[pid], id); if(!t) return; t.rows.push(t.columns.map(function(){ return ''; })); render();
+}
+function fsDelCustomRow(pid, id, ri){
+  var t = fsFindCustomTable(DB.projects[pid], id); if(!t) return; t.rows.splice(ri,1); render();
+}
+function fsDelCustomTable(pid, id){
+  if (!confirm('این جدول سفارشی حذف شود؟')) return;
+  var p = DB.projects[pid], d = ensureFSFixedInvestmentData(p);
+  d.customTables = d.customTables.filter(function(x){ return x.id!==id; });
+  render();
+}
+function buildFSCustomTable(p, t){
+  var cols = t.columns, rows = t.rows;
+  var head = cols.map(function(c,ci){
+    return '<th><input class="fs-table-input" style="min-width:110px;" value="'+esc(c.label)+'" onchange="fsSetColLabel(\''+p.id+'\',\''+t.id+'\','+ci+',this.value)"/></th>';
+  }).join('');
+  var body = rows.map(function(row,ri){
+    var cells = cols.map(function(c,ci){
+      return '<td><input class="fs-table-input" style="width:100%;min-width:90px;" value="'+esc(row[ci]!=null?row[ci]:'')+'" onchange="fsSetCell(\''+p.id+'\',\''+t.id+'\','+ri+','+ci+',this.value)"/></td>';
+    }).join('');
+    return '<tr>'+cells+'<td style="text-align:center;"><button class="btn small ghost" title="حذف ردیف" onclick="fsDelCustomRow(\''+p.id+'\',\''+t.id+'\','+ri+')">✕</button></td></tr>';
+  }).join('');
+  return '<div style="margin:10px 0 16px;">'+
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">'+
+      '<input class="fs-table-input" style="font-weight:700;max-width:280px;" value="'+esc(t.title)+'" onchange="fsSetCustom(this.value,\''+p.id+'\',\''+t.id+'\')"/>'+
+      '<button class="btn small" onclick="fsAddCustomColumn(\''+p.id+'\',\''+t.id+'\')">+ ستون</button>'+
+      '<button class="btn small" onclick="fsAddCustomRow(\''+p.id+'\',\''+t.id+'\')">+ ردیف</button>'+
+      '<button class="btn small ghost" onclick="fsDelCustomTable(\''+p.id+'\',\''+t.id+'\')">حذف جدول ✕</button>'+
+    '</div>'+
+    '<div class="table-wrap"><table><thead><tr>'+head+'<th></th></tr></thead><tbody>'+
+      (body || ('<tr><td colspan="'+(cols.length+1)+'" class="empty">برای شروع، «+ ردیف» را بزنید.</td></tr>'))+
+    '</tbody></table></div>'+
+  '</div>';
+}
+function fsBuildFixedCustomTables(p){
+  var d = ensureFSFixedInvestmentData(p);
+  if (!d || !Array.isArray(d.customTables)) return '';
+  return d.customTables.map(function(t){ return buildFSCustomTable(p, t); }).join('');
+}
 function getFSCurrencyMeta(p){
 
   var d =

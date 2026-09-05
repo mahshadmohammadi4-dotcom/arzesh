@@ -2063,7 +2063,7 @@ function personName(key){ return DB.people[key] ? DB.people[key].name : key; }
 /* =========================================================================
    وضعیت واسط کاربری
    ========================================================================= */
-var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire" };
+var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null };
 
 /* =========================================================================
    نقش‌ها و سطوح دسترسی (RBAC)
@@ -2183,7 +2183,7 @@ function toggleField(key){ UI.expandedField = (UI.expandedField===key) ? null : 
 function resetDemo(){
   if (!confirm('بازنشانی نسخه‌ی نمایشی به حالت اولیه؟ تمام تغییرات شما پاک می‌شود.')) return;
   seed();
-  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire" };
+  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null };
   render();
 }
 
@@ -15073,6 +15073,10 @@ function ensureFSFixedInvestmentData(p){
 
     }
 
+    if(!Array.isArray(d.fixedInvestment[key].extraCols)){
+      d.fixedInvestment[key].extraCols = [];
+    }
+
   });
 
 
@@ -19006,8 +19010,8 @@ function buildFSWorkingCapitalTab(p){
           p.id+
         '\')">'+
         '+ افزودن آیتم'+
-      '</button>'+
 
+      '</button>'+
 
     '</div>'
 
@@ -22936,6 +22940,9 @@ function buildFSFixedInvestmentCategory(
   var currency =
     getFSCurrencyMeta(p);
 
+  var catData = data[category] || [];
+  var extraCols = catData.extraCols || [];
+
 
   var rows =
     data[category]
@@ -23079,6 +23086,10 @@ function buildFSFixedInvestmentCategory(
 
             '</td>'+
 
+            extraCols.map(function(c){
+              return '<td><input class="fs-table-input" style="width:100%;min-width:90px;" value="'+esc((row.extras&&row.extras[c.id])||'')+'" onchange="fsSetFixedExtraCell(\''+p.id+'\',\''+category+'\',\''+row.id+'\',\''+c.id+'\',this.value)"/></td>';
+            }).join('')+
+
 
 
             /*
@@ -23180,6 +23191,10 @@ function buildFSFixedInvestmentCategory(
             )+
           '</span>'+
 
+          '<div style="margin-top:8px;">'+
+            '<button type="button" class="btn small ghost" onclick="toggleFSEditor(\''+category+'\')">✎ ویرایش ستون‌ها</button>'+
+          '</div>'+
+
         '</div>'+
 
 
@@ -23206,6 +23221,7 @@ function buildFSFixedInvestmentCategory(
 
       '</div>'+
 
+      (UI.fsColEditor===category ? buildFSEditorColumnPanel(p, category, catData, extraCols) : '')+
 
 
       '<div class="fs-table-wrap">'+
@@ -23233,6 +23249,12 @@ function buildFSFixedInvestmentCategory(
               '</th>'+
 
               '<th>منبع</th>'+
+
+              extraCols.map(function(c){
+                return '<th><input class="fs-table-input" style="min-width:90px;" value="'+esc(c.label)+'" onchange="fsSetFixedExtraLabel(\''+p.id+'\',\''+category+'\',\''+c.id+'\',this.value)"/>'+
+                  '<button class="btn small ghost" style="margin-inline-start:4px;padding:0 6px;" title="حذف ستون" onclick="fsDelFixedExtraCol(\''+p.id+'\',\''+category+'\',\''+c.id+'\')">✕</button></th>';
+              }).join('')+
+
               '<th>عملیات</th>'+
 
             '</tr>'+
@@ -23263,6 +23285,8 @@ function buildFSFixedInvestmentCategory(
         '+ افزودن آیتم'+
 
       '</button>'+
+
+      '<button type="button" class="btn small fs-add-row" style="margin-inline-start:8px;" onclick="fsAddFixedExtraCol(\''+p.id+'\',\''+category+'\')">+ افزودن ستون</button>'+
 
 
     '</div>'
@@ -23461,6 +23485,9 @@ function buildFSFixedInvestmentTab(p){
 function fsEnsureFixedObject(p){
   var d = ensureFSFixedInvestmentData(p);
   if (!d) return null;
+  ['land','building','utilities','machinery','vehicles','furniture','other'].forEach(function(k){
+    if (!Array.isArray(d[k])) d[k] = [];
+  });
   if (!Array.isArray(d.customTables)) d.customTables = [];
   return d;
 }
@@ -23527,6 +23554,74 @@ function fsBuildFixedCustomTables(p){
   var d = ensureFSFixedInvestmentData(p);
   if (!d || !Array.isArray(d.customTables)) return '';
   return d.customTables.map(function(t){ return buildFSCustomTable(p, t); }).join('');
+}
+/* گاردِ انعطافِ کنترل‌شده برای جدول‌های پیش‌فرض سرمایه‌گذاری ثابت */
+var FS_FIXED_SYSTEM_COLS = ['شرح','مقدار','واحد','قیمت واحد','مبلغ کل','منبع','عملیات'];
+function fsFixedGuardConflict(name){
+  if (FS_FIXED_SYSTEM_COLS.indexOf(String(name||'').trim())>-1){
+    return 'ستون «'+name+'» از ستون‌های محاسباتیِ این جدول است و قابل حذف/تغییر نیست؛ این تغییر با محاسبهٔ «'+name+'» تناقض ایجاد می‌کند.';
+  }
+  return null;
+}
+function fsFixedCatArr(p, cat){
+  var d = fsEnsureFixedObject(p);
+  if (!d) return null;
+  if (cat && !Array.isArray(d[cat])) d[cat] = [];
+  return cat ? d[cat] : d;
+}
+function fsAddFixedExtraCol(pid, cat){
+  var arr = fsFixedCatArr(DB.projects[pid], cat); if(!arr) return;
+  arr.extraCols = arr.extraCols||[];
+  var col = { id:'X-'+uid(), label:'ستون '+(arr.extraCols.length+1) };
+  arr.extraCols.push(col);
+  arr.forEach(function(r){ r.extras = r.extras||{}; r.extras[col.id]=''; });
+  render();
+}
+function fsSetFixedExtraLabel(pid, cat, colId, label){
+  var arr = fsFixedCatArr(DB.projects[pid], cat); if(!arr) return;
+  var col = null; (arr.extraCols||[]).forEach(function(c){ if(c.id===colId) col=c; });
+  if(!col) return;
+  var conflict = fsFixedGuardConflict(label);
+  var dup = (arr.extraCols||[]).some(function(c){ return c.id!==colId && c.label===label; });
+  if (conflict){ alert(conflict); render(); return; }
+  if (dup){ alert('نام این ستون تکراری است؛ لطفاً نام دیگری انتخاب کنید.'); render(); return; }
+  col.label = label||'ستون';
+  render();
+}
+function fsDelFixedExtraCol(pid, cat, colId){
+  var arr = fsFixedCatArr(DB.projects[pid], cat); if(!arr) return;
+  arr.extraCols = (arr.extraCols||[]).filter(function(c){ return c.id!==colId; });
+  arr.forEach(function(r){ if(r.extras) delete r.extras[colId]; });
+  render();
+}
+function fsSetFixedExtraCell(pid, cat, rowId, colId, val){
+  var arr = fsFixedCatArr(DB.projects[pid], cat); if(!arr) return;
+  arr.forEach(function(r){ if(r.id===rowId){ r.extras=r.extras||{}; r.extras[colId]=val; } });
+}
+function toggleFSEditor(cat){
+  UI.fsColEditor = (UI.fsColEditor===cat) ? null : cat;
+  render();
+}
+function buildFSEditorColumnPanel(p, category, catData, extraCols){
+  var sys = FS_FIXED_SYSTEM_COLS.filter(function(c){ return c!=='عملیات'; }).map(function(c){
+    return '<div class="source-row"><div class="t1w"><div class="t1">'+esc(c)+'</div><div class="t2">ستون محاسباتی — غیرقابل حذف</div></div><span class="pill disabled">سیستمی</span></div>';
+  }).join('');
+  var extras = extraCols.map(function(c){
+    return '<div class="source-row"><div class="t1w">'+
+      '<input class="wiz-field" value="'+esc(c.label)+'" onchange="fsSetFixedExtraLabel(\''+p.id+'\',\''+category+'\',\''+c.id+'\',this.value)"/>'+
+    '</div><button class="btn small ghost" onclick="fsDelFixedExtraCol(\''+p.id+'\',\''+category+'\',\''+c.id+'\')">✕</button></div>';
+  }).join('');
+  return '<div class="card card-pad" style="margin-bottom:14px;border-color:var(--accent);background:var(--accent-tint);">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;">'+
+      '<div style="font-weight:700;font-size:13px;">✎ تعریف/ویرایش ستون‌ها</div>'+
+      '<div style="display:flex;gap:8px;">'+
+        '<button class="btn small primary" onclick="toggleFSEditor(\''+category+'\')">✔ تایید ستون‌ها</button>'+
+        '<button class="btn small ghost" onclick="toggleFSEditor(\''+category+'\')">انصراف</button>'+
+      '</div>'+
+    '</div>'+
+    sys+extras+
+    '<div class="edit-actions" style="margin-top:10px;"><button class="btn small" onclick="fsAddFixedExtraCol(\''+p.id+'\',\''+category+'\')">+ افزودن ستون</button></div>'+
+  '</div>';
 }
 function getFSCurrencyMeta(p){
 

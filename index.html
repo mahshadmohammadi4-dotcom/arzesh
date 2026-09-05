@@ -3389,7 +3389,7 @@ var BA_FIN_UI = {
 
   range:5,
 
-  forecast:true,
+  forecast:false,
 
   expandedRow:null,
 
@@ -8278,19 +8278,19 @@ var BA_FINANCIAL_DEMO = {
     rows:[
 
       {
-        label:'درآمد عملیاتی',
+        label:'فروش خالص',
         values:[780,890,1000,1100,1200],
         forecast:[1320,1460]
       },
 
       {
-        label:'بهای تمام‌شده',
+        label:'بهای تمام‌شده کالای فروش‌رفته',
         values:[520,585,650,700,780],
         forecast:[850,925]
       },
 
       {
-        label:'سود ناخالص',
+        label:'سود ناخالص فروش',
         values:[260,305,350,400,420],
         forecast:[470,535]
       },
@@ -8302,7 +8302,7 @@ var BA_FINANCIAL_DEMO = {
       },
 
       {
-        label:'سود عملیاتی',
+        label:'سود (زیان) عملیاتی',
         values:[150,180,210,245,300],
         forecast:[330,370]
       },
@@ -8314,9 +8314,21 @@ var BA_FINANCIAL_DEMO = {
       },
 
       {
-        label:'سود خالص',
-        values:[90,110,135,155,180],
-        forecast:[205,235]
+        label:'سود (زیان) قبل از کسر مالیات',
+        values:[85,120,150,190,220],
+        forecast:[255,295]
+      },
+
+      {
+        label:'مالیات بر درآمد',
+        values:[18,26,33,42,48],
+        forecast:[56,65]
+      },
+
+      {
+        label:'سود (زیان) خالص',
+        values:[67,94,117,148,172],
+        forecast:[199,230]
       }
 
     ]
@@ -8392,19 +8404,19 @@ var BA_FINANCIAL_DEMO = {
       },
 
       {
-        label:'جریان نقد فعالیت‌های سرمایه‌گذاری',
+        label:'جریان نقد حاصل از فعالیت‌های سرمایه‌گذاری',
         values:[-70,-82,-90,-105,-120],
         forecast:[-130,-142]
       },
 
       {
-        label:'جریان نقد فعالیت‌های تأمین مالی',
+        label:'جریان نقد حاصل از فعالیت‌های تأمین مالی',
         values:[20,12,-5,-18,-25],
         forecast:[-30,-35]
       },
 
       {
-        label:'خالص افزایش / کاهش وجه نقد',
+        label:'تغییرات در موجودی نقد',
         values:[45,45,35,32,40],
         forecast:[45,53]
       }
@@ -8422,15 +8434,15 @@ var BA_FINANCIAL_DEMO = {
     rows:[
 
       {
-        label:'مانده ابتدای دوره',
+        label:'مانده ابتدای سال',
         values:[390,430,480,525,625],
         forecast:[700,765]
       },
 
       {
-        label:'سود خالص دوره',
-        values:[90,110,135,155,180],
-        forecast:[205,235]
+        label:'اصلاح اشتباهات',
+        values:[-5,-4,-6,-3,-2],
+        forecast:[0,0]
       },
 
       {
@@ -8440,13 +8452,19 @@ var BA_FINANCIAL_DEMO = {
       },
 
       {
-        label:'سود سهام پرداختی',
-        values:[-50,-80,-90,-115,-105],
-        forecast:[-140,-168]
+        label:'سود (زیان) خالص گزارش‌شده',
+        values:[90,110,135,155,180],
+        forecast:[205,235]
       },
 
       {
-        label:'مانده پایان دوره',
+        label:'تخصیص به اندوخته‌ها',
+        values:[-15,-18,-22,-26,-30],
+        forecast:[-34,-39]
+      },
+
+      {
+        label:'مانده پایان سال',
         values:[430,480,525,625,700],
         forecast:[765,832]
       }
@@ -8678,6 +8696,26 @@ var BA_FIN_DRILLDOWN = {
         factor:0.15
       }
 
+    ],
+
+
+    6:[
+
+      {
+        label:'سرمایه',
+        factor:0.55
+      },
+
+      {
+        label:'اندوخته قانونی',
+        factor:0.15
+      },
+
+      {
+        label:'سود (زیان) انباشته',
+        factor:0.30
+      }
+
     ]
 
   },
@@ -8690,13 +8728,13 @@ var BA_FIN_DRILLDOWN = {
     0:[
 
       {
-        label:'دریافت نقدی از مشتریان',
-        factor:1.42
+        label:'نقد حاصل از عملیات',
+        factor:1.12
       },
 
       {
-        label:'پرداخت به تأمین‌کنندگان و کارکنان',
-        factor:-0.42
+        label:'پرداخت‌های نقدی بابت مالیات بر درآمد',
+        factor:-0.12
       }
 
     ],
@@ -8705,13 +8743,68 @@ var BA_FIN_DRILLDOWN = {
     1:[
 
       {
-        label:'خرید دارایی ثابت',
-        factor:0.82
+        label:'دریافت‌های ناشی از فروش دارایی‌های ثابت مشهود',
+        factor:0.20
       },
 
       {
-        label:'سایر سرمایه‌گذاری‌ها',
-        factor:0.18
+        label:'پرداخت‌های نقدی برای خرید دارایی‌های ثابت مشهود',
+        factor:-0.85
+      },
+
+      {
+        label:'سایر جریان‌های نقدی سرمایه‌گذاری',
+        factor:-0.35
+      }
+
+    ],
+
+
+    2:[
+
+      {
+        label:'دریافت‌های ناشی از افزایش سرمایه',
+        factor:0.90
+      },
+
+      {
+        label:'دریافت‌های ناشی از تسهیلات',
+        factor:1.30
+      },
+
+      {
+        label:'پرداخت‌های نقدی بابت اصل تسهیلات',
+        factor:-0.80
+      },
+
+      {
+        label:'پرداخت‌های نقدی بابت سود تسهیلات',
+        factor:-0.30
+      },
+
+      {
+        label:'سایر جریان‌های نقدی تأمین مالی',
+        factor:0.35
+      }
+
+    ],
+
+
+    3:[
+
+      {
+        label:'موجودی نقد در ابتدای سال',
+        factor:0.60
+      },
+
+      {
+        label:'تغییرات نرخ ارز',
+        factor:0.05
+      },
+
+      {
+        label:'موجودی نقد در پایان سال',
+        factor:1.65
       }
 
     ]
@@ -8723,7 +8816,7 @@ var BA_FIN_DRILLDOWN = {
   equity:{
 
 
-    4:[
+    0:[
 
       {
         label:'سرمایه',
@@ -8731,13 +8824,43 @@ var BA_FIN_DRILLDOWN = {
       },
 
       {
-        label:'اندوخته‌ها',
+        label:'اندوخته قانونی',
         factor:0.15
       },
 
       {
-        label:'سود انباشته',
-        factor:0.30
+        label:'سایر اندوخته‌ها',
+        factor:0.05
+      },
+
+      {
+        label:'سود (زیان) انباشته',
+        factor:0.25
+      }
+
+    ],
+
+
+    5:[
+
+      {
+        label:'سرمایه',
+        factor:0.55
+      },
+
+      {
+        label:'اندوخته قانونی',
+        factor:0.15
+      },
+
+      {
+        label:'سایر اندوخته‌ها',
+        factor:0.05
+      },
+
+      {
+        label:'سود (زیان) انباشته',
+        factor:0.25
       }
 
     ]
@@ -9317,21 +9440,12 @@ function buildBAFinancialControls(){
       پیش‌بینی
     </label>
 
-    <select
-      onchange="setBAFinancialForecast(this.value)"
+    <button
+      class="btn small ${BA_FIN_UI.forecast?'primary':'ghost'}"
+      onclick="setBAFinancialForecast('${BA_FIN_UI.forecast?'off':'on'}')"
     >
-
-      <option value="off"
-        ${!BA_FIN_UI.forecast?'selected':''}>
-        خاموش
-      </option>
-
-      <option value="on"
-        ${BA_FIN_UI.forecast?'selected':''}>
-        ۲ سال آینده
-      </option>
-
-    </select>
+      ${BA_FIN_UI.forecast?'✕ بستن پیش‌بینی':'📈 نمایش پیش‌بینی'}
+    </button>
 
   </div>
 

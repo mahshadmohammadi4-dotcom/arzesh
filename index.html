@@ -2063,7 +2063,7 @@ function personName(key){ return DB.people[key] ? DB.people[key].name : key; }
 /* =========================================================================
    وضعیت واسط کاربری
    ========================================================================= */
-var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1 };
+var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire" };
 
 /* =========================================================================
    نقش‌ها و سطوح دسترسی (RBAC)
@@ -2183,7 +2183,7 @@ function toggleField(key){ UI.expandedField = (UI.expandedField===key) ? null : 
 function resetDemo(){
   if (!confirm('بازنشانی نسخه‌ی نمایشی به حالت اولیه؟ تمام تغییرات شما پاک می‌شود.')) return;
   seed();
-  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1 };
+  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire" };
   render();
 }
 
@@ -24547,7 +24547,12 @@ var FS_WIZARD_STEPS = [
   { key:'fs-results', label:'نتایج' },
   { key:'report', label:'گزارش' }
 ];
-function fsWizGo(key){ UI.fsItemIndex = -1; setTab(key); window.scrollTo(0,0); }
+function fsWizGo(key){
+  UI.fsItemIndex = -1;
+  var keys = FS_WIZARD_STEPS.map(function(s){ return s.key; });
+  if (keys.indexOf(key)>-1) UI.fsWizStep = key;
+  setTab(key); window.scrollTo(0,0);
+}
 function fsWizNav(dir){
   var keys = FS_WIZARD_STEPS.map(function(s){ return s.key; });
   var i = keys.indexOf(UI.tab);
@@ -24617,6 +24622,13 @@ function buildFSWizardBottomNav(p){
     در RTL: دکمهٔ «تأیید و بعدی» (اصلی) سمت راست، «قبلی» سمت چپ؛ فلش‌ها جهت درست.
   */
   var confirmed = !!(p.fsWizardDone && p.fsWizardDone[UI.tab]);
+  /* اگر روی تب کناری/غیرمرحله‌ای (مثل اسناد، نمای کلی، برنامه) هستیم → برگشت به جریان */
+  if (cur<0){
+    return '<div class="fs-wizard-bottom no-print">'+
+      '<button type="button" class="btn small primary" onclick="fsWizGo(UI.fsWizStep)">◂ برگشت به جریان امکان‌سنجی</button>'+
+      '<span class="fs-wiz-count">در حال ویرایش «'+esc(currentTabLabel(p))+'». برای ادامه به مرحله‌ها برگردید.</span>'+
+    '</div>';
+  }
   return '<div class="fs-wizard-bottom no-print">'+
     '<button type="button" class="btn small primary" onclick="fsWizNext(\''+p.id+'\')">'+
       (isLast ? 'تکمیل و مشاهده گزارش ✓' : (confirmed ? '✔ تأییدشده — ادامه ◂' : 'بعدی ◂'))+
@@ -24625,8 +24637,14 @@ function buildFSWizardBottomNav(p){
       (confirmed ? ' <span class="pill ok">تأیید شده</span>' : '')+
       '<span style="font-size:10px;color:var(--ink-faint);margin-inline-start:6px;">(با هر «بعدی» ایتم بعدی همین صفحه نمایش داده می‌شود)</span>'+
     '</span>'+
+    '<button type="button" class="btn small ghost" onclick="fsWizGo(\'report\')">پرش به گزارش ⤒</button>'+
     '<button type="button" class="btn small" '+(isFirst?'disabled':'onclick="fsWizNav(-1)"')+'>▸ قبلی</button>'+
   '</div>';
+}
+function currentTabLabel(p){
+  var def = PAGE_DEFS[UI.tab];
+  if (def && def.title) return def.title;
+  return 'این بخش';
 }
 function buildProjectView(){
   var p = DB.projects[UI.projectId];

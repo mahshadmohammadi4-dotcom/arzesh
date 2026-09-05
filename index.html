@@ -5125,6 +5125,58 @@ function buildBAValuationHero(p){
 
 }
 
+function buildBAMarginOfSafety(p){
+  var m = getBAValuationModel(p);
+  var s = getBAValuationScenarios(p);
+  var base = s.base, bear = s.bear;
+  var moS = (base && bear && base>0) ? ((base-bear)/base)*100 : null;
+  var verdict, cls, desc;
+  if (moS==null){ verdict='—'; cls='muted'; desc='داده کافی برای محاسبه حاشیه اطمینان نیست.'; }
+  else if (moS>=40){ verdict='حاشیه اطمینان بالا'; cls='ok'; desc='افت برآوردی در سناریوی بدبینانه نسبت به مبنا قابل‌توجه است؛ ارزش‌گذاری محتاطانه است.'; }
+  else if (moS>=20){ verdict='حاشیه اطمینان مناسب'; cls='ok'; desc='مقداری محافظه‌کاری در مفروضات مبنا دیده می‌شود.'; }
+  else { verdict='حاشیه اطمینان محدود'; cls='warn'; desc='فاصله کم سناریوی مبنا تا بدبینانه؛ ارزش‌گذاری نسبتاً خوش‌بینانه است.'; }
+  var ring = (moS!=null)
+    ? sealHTML(Math.max(2,Math.min(99,Math.round(moS))), (cls==='ok'?'ok':'warn'), 'sm')
+    : '';
+  return '<div class="card card-pad" style="display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap;">'+
+    ring+
+    '<div style="flex:1;min-width:180px;">'+
+      '<div style="font-weight:700;font-size:13px;">حاشیه اطمینان — <span class="pill '+cls+'">'+verdict+'</span></div>'+
+      '<div style="font-size:11.5px;color:var(--ink-muted);margin-top:5px;line-height:1.8;">'+desc+'</div>'+
+    '</div>'+
+    (moS!=null ? '<div style="text-align:left;"><div style="font-size:10.5px;color:var(--ink-faint);">افت در بدبینانه</div>'+
+      '<strong class="num" style="font-size:16px;color:var(--'+(cls==='ok'?'positive':'gold')+');">'+fmtPercent(moS)+'</strong></div>' : '')+
+  '</div>';
+}
+
+function buildBAValuationMetrics(p){
+  var m = getBAValuationModel(p);
+  var rev = m.revenue||0, np = m.netProfit||0, bEq = m.bookEquity||0;
+  var last = (BA_FINANCIAL_DEMO.years||[]).length - 1;
+  var op = baFinVal('income','سود (زیان) عملیاتی', last);
+  var s1 = baFinVal('income','فروش خالص', last);
+  var risk = (typeof getBARiskSummary==='function') ? getBARiskSummary(p) : null;
+  var cards = [
+    { label:'ارزش حقوق صاحبان سهام', val:fmtCurrency(m.equityValue) },
+    { label:'ارزش بنگاه (EV)', val:fmtCurrency(m.enterpriseValue) },
+    { label:'بدهی خالص نمایشی', val:fmtCurrency(m.netDebt) },
+    { label:'بازده حقوق صاحبان (ROE)', val:(bEq?fmtPercent(np/bEq*100):'—') },
+    { label:'حاشیه سود خالص', val:(rev?fmtPercent(np/rev*100):'—') },
+    { label:'حاشیه سود عملیاتی', val:(s1?fmtPercent(op/s1*100):'—') },
+    { label:'بدهی خالص ÷ حقوق صاحبان', val:(bEq?fmtRatio(m.netDebt/bEq):'—') },
+    { label:'سطح ریسک', val:(risk?risk.label:'—') }
+  ];
+  return '<div class="section-head"><div><h3>شاخص‌های کلیدی ارزش‌گذاری</h3>'+
+    '<span class="hint">متریک‌های اصلی بر مبنای داده‌های مالی</span></div>'+
+    '<span class="pill source AI_SUGGESTED">Valuation Metrics</span></div>'+
+    '<div class="grid kpis">'+
+    cards.map(function(c){
+      return '<div class="card kpi-card"><span class="kpi-label">'+esc(c.label)+'</span>'+
+        '<span class="kpi-value num">'+numSpan(c.val)+'</span></div>';
+    }).join('')+
+    '</div>';
+}
+
 function buildBAValuationCashFlow(p){
 
   var model =
@@ -5420,6 +5472,10 @@ function buildBAValuationTab(p){
     buildBAValuationCompanyIntro(p)+
 
     buildBAValuationHero(p)+
+
+    buildBAMarginOfSafety(p)+
+
+    buildBAValuationMetrics(p)+
 
     buildBAValuationAssumptions()+
 

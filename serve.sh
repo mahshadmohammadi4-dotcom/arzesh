@@ -12,7 +12,7 @@ if pgrep -f "http.server ${PORT}" >/dev/null 2>&1; then
   sleep 1
 fi
 
-setsid bash -c "exec python3 -m http.server ${PORT} --bind 0.0.0.0" </dev/null >/tmp/opencode/v2-server.log 2>&1 &
+setsid bash -c "exec python3 serve.py ${PORT}" </dev/null >/tmp/opencode/v2-server.log 2>&1 &
 disown
 
 sleep 1

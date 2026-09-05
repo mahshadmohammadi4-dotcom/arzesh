@@ -108,6 +108,9 @@
     display:flex; flex-direction:column; padding:18px 0; gap:14px; position:fixed; inset-inline-start:0; top:0; height:100vh; overflow-x:hidden; overflow-y:auto;
   }
   .rail:hover, .rail.pinned{ width:250px; box-shadow:12px 0 30px -10px rgba(0,0,0,.25); }
+  /* مخفی‌سازی اسکرول‌بار سفید نوار کناری */
+  .rail::-webkit-scrollbar{ width:0px; height:0px; }
+  .rail{ scrollbar-width:none; -ms-overflow-style:none; }
   .rail-label{ opacity:0; transition:opacity .14s ease; }
   .rail:hover .rail-label, .rail.pinned .rail-label{ opacity:1; }
   .brand{ display:flex; align-items:center; gap:11px; padding:0 18px; }

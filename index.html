@@ -2063,7 +2063,7 @@ function personName(key){ return DB.people[key] ? DB.people[key].name : key; }
 /* =========================================================================
    وضعیت واسط کاربری
    ========================================================================= */
-var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null };
+var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null };
 
 /* =========================================================================
    نقش‌ها و سطوح دسترسی (RBAC)
@@ -2183,7 +2183,7 @@ function toggleField(key){ UI.expandedField = (UI.expandedField===key) ? null : 
 function resetDemo(){
   if (!confirm('بازنشانی نسخه‌ی نمایشی به حالت اولیه؟ تمام تغییرات شما پاک می‌شود.')) return;
   seed();
-  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null };
+  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null };
   render();
 }
 
@@ -8246,7 +8246,76 @@ function buildBAStatementAnalysis(){
 
 }
 
+/* =========================================================
+   ایجنت درون‌صفحه (به‌جای چت‌بات) — دو کار: «توضیح دقیق» و «اعمال تغییر»
+   ========================================================= */
+function setBAAgentMode(mode){
+  UI.baAgentMode = mode;
+  UI.baAgentOut = null;
+  render();
+}
+function applyBAAssumption(key, value){
+  var el = document.getElementById('agent-'+key);
+  var v = el ? parseFloat(el.value) : NaN;
+  if (isNaN(v)){ alert('عدد معتبر وارد کنید.'); return; }
+  BA_FIN_UI.assumptions[key] = v;
+  BA_FIN_UI.forecast = true;
+  UI.baAgentOut = '✅ تغییر مفروضه «'+({inflation:'نرخ تورم',salesGrowth:'رشد فروش',productionGrowth:'رشد تولید'}[key]||key)+'» به '+v+' اعمال شد و پیش‌بینی به‌روز شد.';
+  setTab('financial-data');
+  render();
+}
+function buildBAAgentExplain(p){
+  var text = '';
+  if (BA_ANALYSIS_UI.section==='risk'){
+    var risks = getBARiskItems(p).slice().sort(function(a,b){ return b.score-a.score; });
+    text = risks.map(function(r){ return '• <strong>'+esc(r.title)+'</strong> (امتیاز '+r.score+'/۱۰۰): '+esc(r.analysis)+' — <em>'+esc(r.recommendation)+'</em>'; }).join('<br>');
+  } else if (BA_ANALYSIS_UI.section==='ratios'){
+    text = 'جدول نسبت‌های مالی در ۴ گروه تنظیم شده است (اهرم/پوشش بهره، کارایی/نقدینگی، سودآوری/بازدهی، جریان نقد/بازار). '+
+      'برای هر نسبت، مقدار هر سال، فرمول و تفسیر آن در دسترس است. روی «روند» هر نسبت کلیک کنید تا روند سال‌ها و تفسیر دیده شود؛ '+
+      'یا چند نسبت را تیک بزنید و «تحلیل هوشمند» را بزنید.';
+  } else {
+    var data = BA_STATEMENT_ANALYSIS_DEMO[BA_ANALYSIS_UI.statement];
+    text = '<strong>'+esc(data.title)+'</strong> — '+esc(data.summary)+' برای مشاهده داده‌های تفصیلی این صورت، «مشاهده داده‌های این صورت» را بزنید.';
+  }
+  return '<div class="card card-pad" style="margin-top:14px;border-color:var(--accent);background:var(--accent-tint);">'+
+    '<div style="font-weight:700;font-size:13px;margin-bottom:8px;">✦ توضیح دقیق (ایجنت)</div>'+
+    '<div style="font-size:12.5px;line-height:2;color:var(--ink);">'+text+'</div>'+
+    '<button class="btn small ghost" style="margin-top:10px;" onclick="setBAAgentMode(null)">بستن ✕</button>'+
+  '</div>';
+}
+function buildBAAgentApply(p){
+  var a = BA_FIN_UI.assumptions;
+  var rows = ['inflation','salesGrowth','productionGrowth'].map(function(key){
+    var label = {inflation:'نرخ تورم (%)',salesGrowth:'رشد فروش (%)',productionGrowth:'رشد تولید (%)'}[key];
+    return '<div class="q-row"><span class="lbl">'+label+'</span>'+
+      '<input id="agent-'+key+'" type="number" value="'+a[key]+'" step="0.5"/></div>';
+  }).join('');
+  return '<div class="card card-pad" style="margin-top:14px;border-color:var(--accent);background:var(--accent-tint);">'+
+    '<div style="font-weight:700;font-size:13px;margin-bottom:8px;">⚙️ اعمال تغییر مفروضات (ایجنت)</div>'+
+    '<div style="font-size:11.5px;color:var(--ink-muted);margin-bottom:8px;">مقادیر را تغییر دهید تا پیش‌بینی مالی به‌روز شود (فقط بخش‌های تاییدشده).</div>'+
+    rows+
+    '<div class="edit-actions" style="margin-top:10px;"><button class="btn small primary" onclick="applyBAAssumption(\'inflation\')">اعمال همه</button>'+
+    '<button class="btn small ghost" onclick="setBAAgentMode(null)">بستن ✕</button></div>'+
+    (UI.baAgentOut ? '<p style="font-size:12px;color:var(--positive);margin:10px 0 0;">'+esc(UI.baAgentOut)+'</p>' : '')+
+  '</div>';
+}
+function buildBAAgentPanel(p){
+  return '<div class="card card-pad" style="margin-top:14px;">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">'+
+      '<div><div style="font-weight:700;font-size:13px;">🤖 دستیار تحلیل (ایجنت)</div>'+
+      '<span style="font-size:11.5px;color:var(--ink-muted);">توضیح با جزئیات، یا اعمال تغییر در بخش‌های تاییدشده</span></div>'+
+      '<span class="pill source AI_SUGGESTED">AI Agent</span>'+
+    '</div>'+
+    '<div class="smart-q-actions" style="margin-top:10px;">'+
+      '<button class="btn small '+(UI.baAgentMode==='explain'?'primary':'')+'" onclick="setBAAgentMode(\'explain\')">◂ توضیح دقیق</button>'+
+      '<button class="btn small '+(UI.baAgentMode==='apply'?'primary':'')+'" onclick="setBAAgentMode(\'apply\')">⚙️ اعمال تغییر مفروض</button>'+
+    '</div>'+
+    (UI.baAgentMode==='explain' ? buildBAAgentExplain(p) : (UI.baAgentMode==='apply' ? buildBAAgentApply(p) : ''))+
+  '</div>';
+}
 function buildBAAnalysisChat(){
+
+  return buildBAAgentPanel(DB.projects[UI.projectId]);
 
   var messages =
 

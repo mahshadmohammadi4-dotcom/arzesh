@@ -21790,6 +21790,7 @@ function buildFSOperatingSimpleCategory(
             '<td>'+
               buildFSOperatingSource(row)+
             '</td>'+
+            fsXCell(p.id, 'op:'+mode+':'+category, row.id)+
 
 
             '<td>'+
@@ -21871,6 +21872,7 @@ function buildFSOperatingSimpleCategory(
                 esc(currency.short)+
               ')</th>'+
               '<th>منبع</th>'+
+              fsXHead(p.id, 'op:'+mode+':'+category)+
               '<th>عملیات</th>'+
 
             '</tr>'+
@@ -21895,6 +21897,9 @@ function buildFSOperatingSimpleCategory(
         '+ افزودن آیتم'+
 
       '</button>'+
+
+      fsXButton(p.id, 'op:'+mode+':'+category)+
+
 
 
     '</div>'
@@ -22033,6 +22038,7 @@ function buildFSOperatingLaborCategory(
             '<td>'+
               buildFSOperatingSource(row)+
             '</td>'+
+            fsXCell(p.id, 'op:'+mode+':'+category, row.id)+
 
 
             '<td>'+
@@ -22115,8 +22121,9 @@ function buildFSOperatingLaborCategory(
               '<th>حقوق ماهانه ('+
                 esc(currency.short)+
               ')</th>'+
-              '<th>هزینه سال اول</th>'+
+               '<th>هزینه سال اول</th>'+
               '<th>منبع</th>'+
+              fsXHead(p.id, 'op:'+mode+':'+category)+
               '<th>عملیات</th>'+
 
             '</tr>'+
@@ -22141,6 +22148,8 @@ function buildFSOperatingLaborCategory(
         '+ افزودن نیروی انسانی'+
 
       '</button>'+
+
+      fsXButton(p.id, 'op:'+mode+':'+category)+
 
 
     '</div>'
@@ -23556,6 +23565,54 @@ function fsBuildFixedCustomTables(p){
   return d.customTables.map(function(t){ return buildFSCustomTable(p, t); }).join('');
 }
 /* گاردِ انعطافِ کنترل‌شده برای جدول‌های پیش‌فرض سرمایه‌گذاری ثابت */
+/* مکانیزم عمومی «ستون اضافی» برای جدول‌های خطی امکان‌سنجی */
+function fsXGet(p, key){
+  var d = ensureFSPrototypeState(p); if (!d) return null;
+  if (!d.xcols) d.xcols = {};
+  if (!d.xcols[key]) d.xcols[key] = { cols:[], values:{} };
+  return d.xcols[key];
+}
+function fsXAdd(pid, key){
+  var x = fsXGet(DB.projects[pid], key); if (!x) return;
+  x.cols.push({ id:'X'+uid(), label:'ستون '+(x.cols.length+1) });
+  render();
+}
+function fsXSetLabel(pid, key, colId, label, protectedList){
+  var x = fsXGet(DB.projects[pid], key); if (!x) return;
+  var c = x.cols.filter(function(y){ return y.id===colId; })[0]; if (!c) return;
+  if (protectedList && protectedList.indexOf(String(label||'').trim())>-1){
+    alert('ستون «'+label+'» از ستون‌های محاسباتیِ این جدول است و قابل تغییر نیست؛ این تغییر با محاسبه تناقض ایجاد می‌کند.'); render(); return;
+  }
+  c.label = String(label||'').trim() || 'ستون';
+  render();
+}
+function fsXDel(pid, key, colId){
+  var x = fsXGet(DB.projects[pid], key); if (!x) return;
+  x.cols = x.cols.filter(function(y){ return y.id!==colId; });
+  Object.keys(x.values).forEach(function(rid){ if (x.values[rid]) delete x.values[rid][colId]; });
+  render();
+}
+function fsXSetCell(pid, key, rowId, colId, val){
+  var x = fsXGet(DB.projects[pid], key); if (!x) return;
+  if (!x.values[rowId]) x.values[rowId] = {};
+  x.values[rowId][colId] = val;
+}
+function fsXHead(pid, key){
+  var x = fsXGet(DB.projects[pid], key); if (!x) return '';
+  return x.cols.map(function(c){
+    return '<th><input class="fs-table-input" style="min-width:90px;" value="'+esc(c.label)+'" onchange="fsXSetLabel(\''+pid+'\',\''+key+'\',\''+c.id+'\',this.value,window.protectedCols||null)"/>'+
+      '<button class="btn small ghost" style="margin-inline-start:4px;padding:0 6px;" title="حذف ستون" onclick="fsXDel(\''+pid+'\',\''+key+'\',\''+c.id+'\')">✕</button></th>';
+  }).join('');
+}
+function fsXCell(pid, key, rowId){
+  var x = fsXGet(DB.projects[pid], key); if (!x) return '';
+  return x.cols.map(function(c){
+    return '<td><input class="fs-table-input" style="width:100%;min-width:90px;" value="'+esc((x.values[rowId]&&x.values[rowId][c.id])||'')+'" onchange="fsXSetCell(\''+pid+'\',\''+key+'\',\''+rowId+'\',\''+c.id+'\',this.value)"/></td>';
+  }).join('');
+}
+function fsXButton(pid, key){
+  return '<button type="button" class="btn small fs-add-row" style="margin-inline-start:8px;" onclick="fsXAdd(\''+pid+'\',\''+key+'\')">+ افزودن ستون</button>';
+}
 var FS_FIXED_SYSTEM_COLS = ['شرح','مقدار','واحد','قیمت واحد','مبلغ کل','منبع','عملیات'];
 function fsFixedGuardConflict(name){
   if (FS_FIXED_SYSTEM_COLS.indexOf(String(name||'').trim())>-1){

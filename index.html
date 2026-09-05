@@ -2063,7 +2063,7 @@ function personName(key){ return DB.people[key] ? DB.people[key].name : key; }
 /* =========================================================================
    وضعیت واسط کاربری
    ========================================================================= */
-var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null };
+var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null };
 
 /* =========================================================================
    نقش‌ها و سطوح دسترسی (RBAC)
@@ -2183,7 +2183,7 @@ function toggleField(key){ UI.expandedField = (UI.expandedField===key) ? null : 
 function resetDemo(){
   if (!confirm('بازنشانی نسخه‌ی نمایشی به حالت اولیه؟ تمام تغییرات شما پاک می‌شود.')) return;
   seed();
-  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null };
+  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null };
   render();
 }
 
@@ -5854,6 +5854,7 @@ function buildBARiskCard(item){
 
       '<div class="ba-risk-card-head">'+
 
+        '<label class="ba-risk-select"><input type="checkbox" '+((UI.baRiskSel[item.key])?'checked':'')+' onclick="event.stopPropagation();toggleBARiskSel(\''+item.key+'\')"/> تحلیل هوشمند</label>'+
 
         '<div>'+
 
@@ -6189,6 +6190,31 @@ function buildBARiskRecommendations(p){
 
 }
 
+function toggleBARiskSel(key){
+  UI.baRiskSel[key] = !UI.baRiskSel[key];
+  render();
+}
+function closeBARiskAi(){ UI.baRiskAi = null; render(); }
+function runBARiskAiAnalysis(){
+  var sel = Object.keys(UI.baRiskSel).filter(function(k){ return UI.baRiskSel[k]; });
+  if (!sel.length){ alert('حداقل یک طبقه ریسک را انتخاب کنید.'); return; }
+  UI.baRiskAi = sel.map(function(k){
+    var found = null;
+    getBARiskItemsReal().forEach(function(it){ if (it.key===k) found=it; });
+    return found || { key:k, title:'ریسک '+k, score:null, analysis:'', recommendation:'' };
+  });
+  render();
+}
+function getBARiskItemsReal(){
+  // بازگرداندن فهرست استاندارد ریسک برای استفاده در تحلیل هوشمند
+  return [
+    { key:'market', title:'ریسک بازار', score:48, analysis:'تغییرات تقاضا، شرایط صنعت و فشار رقابتی بر رشد فروش و حاشیه سود اثر می‌گذارد.', recommendation:'پایش مستمر بازار، رقبا و قیمت‌ها.' },
+    { key:'financial', title:'ریسک مالی', score:45, analysis:'ساختار بدهی، نقدینگی و توان پوشش تعهدات مهم‌ترین عوامل این طبقه‌اند.', recommendation:'کنترل رشد بدهی و مدیریت سررسید تعهدات.' },
+    { key:'credit', title:'ریسک اعتباری', score:46, analysis:'وضعیت بازپرداخت، تسهیلات و ضمانت‌نامه‌ها بر این طبقه اثر می‌گذارد.', recommendation:'پایش تعهدات بانکی و سررسید تسهیلات.' },
+    { key:'operational', title:'ریسک عملیاتی', score:43, analysis:'وابستگی به افراد کلیدی، تجهیزات و فرآیندها عملکرد شرکت را متأثر می‌کند.', recommendation:'مستندسازی فرآیندها و برنامه تداوم کسب‌وکار.' },
+    { key:'other', title:'سایر ریسک‌ها', score:30, analysis:'ریسک‌های حقوقی، انطباقی، کیفیت داده و موارد خارج از طبقات اصلی.', recommendation:'بازبینی دوره‌ای مجوزها و تعارض داده.' }
+  ];
+}
 function buildBARiskAnalysis(p){
 
   var summary =
@@ -6299,6 +6325,23 @@ function buildBARiskAnalysis(p){
 
 
 
+      (UI.baRiskAi && UI.baRiskAi.length
+        ?
+        '<div class="card card-pad" style="margin-bottom:16px;border-color:var(--accent);background:var(--accent-tint);">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">'+
+            '<div style="font-weight:700;font-size:13px;">✦ تحلیل هوشمند ریسک‌های انتخاب‌شده</div>'+
+            '<button class="btn small ghost" onclick="closeBARiskAi()">بستن ✕</button>'+
+          '</div>'+
+          UI.baRiskAi.map(function(r){
+            return '<p style="font-size:12.5px;color:var(--ink);line-height:1.9;margin:8px 0 0;"><strong>'+esc(r.title)+'</strong> — '+
+              (r.score!=null?('امتیاز '+r.score+' از ۱۰۰. '):'')+esc(r.analysis||'')+
+              (r.recommendation?(' ')+esc(r.recommendation):'')+'</p>';
+          }).join('')+
+          '<p style="font-size:10.5px;color:var(--ink-muted);margin:12px 0 0;">(تحلیل نمونه — در نسخه عملیاتی توسط مدل AI بر اساس داده‌های واقعی تولید می‌شود.)</p>'+
+        '</div>'
+        : '')+
+
+
       '<div class="ba-risk-filters">'+
 
         filters.map(
@@ -6329,6 +6372,11 @@ function buildBARiskAnalysis(p){
       '</div>'+
 
 
+      '<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap;">'+
+        (Object.keys(UI.baRiskSel).filter(function(k){return UI.baRiskSel[k];}).length
+          ? '<button class="btn small primary" onclick="runBARiskAiAnalysis()">✦ تحلیل هوشمند «'+Object.keys(UI.baRiskSel).filter(function(k){return UI.baRiskSel[k];}).length+'» طبقه ریسک</button>'
+          : '<span class="hint">برای تحلیل هوشمند، روی «تحلیل هوشمند» هر کارت ریسک تیک بزنید</span>')+
+      '</div>'+
 
       '<div class="ba-risk-grid">'+
 
@@ -6337,6 +6385,7 @@ function buildBARiskAnalysis(p){
         ).join('')+
 
       '</div>'+
+
 
 
 

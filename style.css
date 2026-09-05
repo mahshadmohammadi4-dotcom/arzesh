@@ -302,6 +302,9 @@
   tbody tr:hover{ background:var(--surface-2); }
   td.num-cell, th.num-cell{ text-align:left; }
   .ba-ratio-active{ background:var(--accent-tint) !important; }
+  .bm-select{ cursor:pointer; }
+  .ba-risk-select{ display:inline-flex; align-items:center; gap:5px; font-size:11px; color:var(--ink-muted); cursor:pointer; flex:none; }
+  .ba-risk-select input{ cursor:pointer; }
 
   /* ---------- watchlist comparison ---------- */
   .stat-dot{ width:7px; height:7px; border-radius:50%; display:inline-block; flex:none; }

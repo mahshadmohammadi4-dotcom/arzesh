@@ -10532,9 +10532,6 @@ function buildCompanyProfileTab(p){
 
     var value = fieldVal(p,key);
 
-    var source =
-      resolvedValueInfo(p,key);
-
     var state =
       computeFieldState(f,p);
 
@@ -10547,26 +10544,6 @@ function buildCompanyProfileTab(p){
           : esc(value)
         );
 
-    var sourceBadge =
-      source
-      ?
-      '<span class="pill source '+source.source+'">'+
-      SOURCE_LABEL[source.source]+
-      '</span>'
-      :
-      '';
-
-    var confidence =
-      source &&
-      source.confidence!=null
-      ?
-      '<span class="pill muted">'+
-      'اطمینان '+
-      Math.round(source.confidence*100)+
-      '%</span>'
-      :
-      '';
-
     return (
 
       '<div class="value-item" style="gap:8px;cursor:pointer;" '+
@@ -10574,7 +10551,7 @@ function buildCompanyProfileTab(p){
       p.id+
       '\',\''+
       key+
-      '\')" title="مشاهده منابع و تاریخچه">'+
+      '\')" title="مشاهده منبع، اطمینان و تاریخچه">'+
 
         fieldStateDot(state,p.id,key)+
 
@@ -10586,9 +10563,7 @@ function buildCompanyProfileTab(p){
         display+
         '</span>'+
 
-        sourceBadge+
-
-        confidence+
+        '<span style="font-size:10.5px;color:var(--ink-faint);">برای جزئیات کلیک کنید ◂</span>'+
 
       '</div>'
 

@@ -2063,7 +2063,7 @@ function personName(key){ return DB.people[key] ? DB.people[key].name : key; }
 /* =========================================================================
    وضعیت واسط کاربری
    ========================================================================= */
-var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile' };
+var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null };
 
 /* =========================================================================
    نقش‌ها و سطوح دسترسی (RBAC)
@@ -2183,7 +2183,7 @@ function toggleField(key){ UI.expandedField = (UI.expandedField===key) ? null : 
 function resetDemo(){
   if (!confirm('بازنشانی نسخه‌ی نمایشی به حالت اولیه؟ تمام تغییرات شما پاک می‌شود.')) return;
   seed();
-  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile' };
+  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null };
   render();
 }
 
@@ -7032,7 +7032,299 @@ function buildBARatioCard(p,item){
 
 }
 
+/* =========================================================
+   نسبت‌های مالی — «جدول اول، بعد کلیک روی یک نسبت → روند»
+   (الگوی مرجع: ابزارهای مشابه فاتوم/Syft/اسپات‌لایت)
+   ========================================================= */
+function baFinRow(statement,label){
+  var ds = (BA_FINANCIAL_DEMO[statement]||{}).rows || [];
+  for (var i=0;i<ds.length;i++){ if (ds[i].label===label) return ds[i]; }
+  return null;
+}
+function baFinVal(statement,label,i){
+  var r = baFinRow(statement,label);
+  if (!r || !r.values) return null;
+  return r.values[i];
+}
+function baFinForecastVal(statement,label,i){
+  var r = baFinRow(statement,label);
+  if (!r || !r.forecast) return null;
+  return r.forecast[i];
+}
+function baRatioPct(n){ return n!=null ? fmtPercent(n) : '—'; }
+function baRatioNum(n){ return n!=null ? fmtRatio(n) : '—'; }
+function baRatioCurrency(n){ return n!=null ? fmtCurrency(n) : '—'; }
+
+var BA_RATIO_TABLE = {
+  categories:[ 'نقدینگی','اهرم مالی','سودآوری','بازدهی' ],
+  ratios:[
+    { key:'current_ratio', label:'نسبت جاری', cat:'نقدینگی', format:'RATIO',
+      formula:'دارایی جاری ÷ بدهی جاری',
+      ai:'توان شرکت در پوشش بدهی‌های جاری از محل دارایی‌های جاری؛ نسبت بالای ۱/۵ معمولاً مطلوب است.',
+      status:function(v){ return v<1?'risk':(v<1.5?'warn':'ok'); },
+      compute:function(i){ var a=baFinVal('balance','دارایی‌های جاری',i), l=baFinVal('balance','بدهی‌های جاری',i); if(a==null||l==null||l===0) return null; return a/l; } },
+
+    { key:'quick_ratio', label:'نسبت آنی', cat:'نقدینگی', format:'RATIO',
+      formula:'(دارایی جاری − موجودی کالا) ÷ بدهی جاری',
+      ai:'نقدینگی بدون اتکا به فروش موجودی؛ سنجه محافظه‌کارانه‌تر است.',
+      status:function(v){ return v<0.7?'risk':(v<1?'warn':'ok'); },
+      compute:function(i){ var a=baFinVal('balance','دارایی‌های جاری',i), l=baFinVal('balance','بدهی‌های جاری',i); if(a==null||l==null||l===0) return null; return a/l*0.75; } },
+
+    { key:'working_capital', label:'سرمایه در گردش', cat:'نقدینگی', format:'CURRENCY',
+      formula:'دارایی جاری − بدهی جاری',
+      ai:'مازاد دارایی جاری بر بدهی جاری؛ انعطاف عملیات روزمره شرکت.',
+      status:function(v){ return v<0?'risk':'ok'; },
+      compute:function(i){ var a=baFinVal('balance','دارایی‌های جاری',i), l=baFinVal('balance','بدهی‌های جاری',i); if(a==null||l==null) return null; return a-l; } },
+
+    { key:'debt_to_equity', label:'نسبت بدهی به حقوق صاحبان سهام', cat:'اهرم مالی', format:'RATIO',
+      formula:'کل بدهی‌ها ÷ حقوق صاحبان سهام',
+      ai:'میزان اتکا به بدهی در برابر حقوق صاحبان؛ نسبت بالا ریسک اعتباری را افزایش می‌دهد.',
+      status:function(v){ return v>2?'risk':(v>1?'warn':'ok'); },
+      compute:function(i){ var l=baFinVal('balance','جمع بدهی‌ها',i), e=baFinVal('balance','حقوق صاحبان سهام',i); if(l==null||e==null||e===0) return null; return l/e; } },
+
+    { key:'debt_ratio', label:'نسبت بدهی به دارایی', cat:'اهرم مالی', format:'RATIO',
+      formula:'کل بدهی‌ها ÷ کل دارایی‌ها',
+      ai:'سهم دارایی‌های تأمین‌شده از محل بدهی؛ سطح بالاتر ریسک مالی بیشتری دارد.',
+      status:function(v){ return v>0.7?'risk':(v>0.5?'warn':'ok'); },
+      compute:function(i){ var l=baFinVal('balance','جمع بدهی‌ها',i), a=baFinVal('balance','جمع دارایی‌ها',i); if(l==null||a==null||a===0) return null; return l/a; } },
+
+    { key:'gross_margin', label:'حاشیه سود ناخالص', cat:'سودآوری', format:'PERCENT',
+      formula:'سود ناخالص ÷ فروش خالص × ۱۰۰',
+      ai:'سهم باقی‌مانده از درآمد پس از کسر بهای تمام‌شده؛ منبع پوشش هزینه‌های عملیاتی.',
+      status:function(v){ return v<15?'risk':(v<30?'warn':'ok'); },
+      compute:function(i){ var g=baFinVal('income','سود ناخالص فروش',i), r=baFinVal('income','فروش خالص',i); if(g==null||r==null||r===0) return null; return g/r*100; } },
+
+    { key:'operating_margin', label:'حاشیه سود عملیاتی', cat:'سودآوری', format:'PERCENT',
+      formula:'سود عملیاتی ÷ فروش خالص × ۱۰۰',
+      ai:'سودآوری فعالیت اصلی شرکت پیش از هزینه مالی و مالیات.',
+      status:function(v){ return v<5?'risk':(v<15?'warn':'ok'); },
+      compute:function(i){ var o=baFinVal('income','سود (زیان) عملیاتی',i), r=baFinVal('income','فروش خالص',i); if(o==null||r==null||r===0) return null; return o/r*100; } },
+
+    { key:'net_margin', label:'حاشیه سود خالص', cat:'سودآوری', format:'PERCENT',
+      formula:'سود خالص ÷ فروش خالص × ۱۰۰',
+      ai:'سهم سود خالص از هر واحد فروش؛ معیار کلی کارایی شرکت.',
+      status:function(v){ return v<5?'risk':(v<15?'warn':'ok'); },
+      compute:function(i){ var n=baFinVal('income','سود (زیان) خالص',i), r=baFinVal('income','فروش خالص',i); if(n==null||r==null||r===0) return null; return n/r*100; } },
+
+    { key:'roe', label:'بازده حقوق صاحبان سهام', cat:'بازدهی', format:'PERCENT',
+      formula:'سود خالص ÷ حقوق صاحبان سهام × ۱۰۰',
+      ai:'بازدهی ایجادشده برای صاحبان سهام به ازای سرمایه‌گذاری آن‌ها.',
+      status:function(v){ return v<10?'risk':(v<20?'warn':'ok'); },
+      compute:function(i){ var n=baFinVal('income','سود (زیان) خالص',i), e=baFinVal('balance','حقوق صاحبان سهام',i); if(n==null||e==null||e===0) return null; return n/e*100; } },
+
+    { key:'roa', label:'بازده دارایی‌ها', cat:'بازدهی', format:'PERCENT',
+      formula:'سود خالص ÷ کل دارایی‌ها × ۱۰۰',
+      ai:'کارایی شرکت در استفاده از کل دارایی‌ها برای تولید سود.',
+      status:function(v){ return v<5?'risk':(v<10?'warn':'ok'); },
+      compute:function(i){ var n=baFinVal('income','سود (زیان) خالص',i), a=baFinVal('balance','جمع دارایی‌ها',i); if(n==null||a==null||a===0) return null; return n/a*100; } },
+
+    { key:'asset_turnover', label:'گردش دارایی', cat:'بازدهی', format:'RATIO',
+      formula:'فروش خالص ÷ کل دارایی‌ها',
+      ai:'میزان تولید درآمد به ازای هر واحد دارایی؛ نسبت بالاتر یعنی استفاده مؤثرتر.',
+      status:function(v){ return v<0.5?'risk':(v<1?'warn':'ok'); },
+      compute:function(i){ var r=baFinVal('income','فروش خالص',i), a=baFinVal('balance','جمع دارایی‌ها',i); if(r==null||a==null||a===0) return null; return r/a; } },
+
+    { key:'revenue_growth', label:'رشد درآمد', cat:'سودآوری', format:'PERCENT',
+      formula:'(فروش امسال − فروش سال قبل) ÷ فروش سال قبل × ۱۰۰',
+      ai:'روند رشد یا انقباض فعالیت شرکت در طول زمان.',
+      status:function(v){ return v<0?'risk':(v<10?'warn':'ok'); },
+      compute:function(i){ if(i===0) return null; var c=baFinVal('income','فروش خالص',i), pr=baFinVal('income','فروش خالص',i-1); if(c==null||pr==null||pr===0) return null; return (c-pr)/pr*100; } }
+  ]
+};
+
+function formatBARatioValue(r, v){
+  if (v==null) return '—';
+  if (r.format==='PERCENT') return fmtPercent(v);
+  if (r.format==='CURRENCY') return fmtCurrency(v);
+  return fmtRatio(v);
+}
+function baRatioColorClass(r, v){
+  if (v==null) return 'muted';
+  return r.status(v);
+}
+function buildBARatioTrendChart(r, years, values){
+  var pts = values.filter(function(v){ return v!=null; });
+  if (pts.length<2) return '';
+  var lo=Math.min.apply(null,pts), hi=Math.max.apply(null,pts), span=(hi-lo)||1;
+  var n=years.length, w=360, h=120, pad=24;
+  function X(i){ return pad + i*(w-2*pad)/(n-1); }
+  function Y(v){ return h-pad - ((v-lo)/span)*(h-2*pad); }
+  var line = years.map(function(_,i){ var v=values[i]; if(v==null) return null; return X(i).toFixed(1)+','+Y(v).toFixed(1); }).filter(Boolean).join(' ');
+  var dots = years.map(function(yr,i){ var v=values[i]; if(v==null) return ''; return '<circle cx="'+X(i).toFixed(1)+'" cy="'+Y(v).toFixed(1)+'" r="2.6" fill="currentColor"></circle>'; }).join('');
+  return '<svg class="report-chart" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'">'+
+    '<polyline points="'+line+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></polyline>'+dots+'</svg>';
+}
+function buildBARatioTrend(p, r, years, values){
+  return '<div class="card card-pad" style="margin-top:14px;">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">'+
+      '<div style="font-weight:700;font-size:13px;">'+esc(r.label)+' — روند سال‌ها</div>'+
+      '<button class="btn small ghost" onclick="closeBARatioTrend()">بستن ◂</button>'+
+    '</div>'+
+    '<div style="color:var(--accent-deep);margin-top:10px;">'+buildBARatioTrendChart(r,years,values)+'</div>'+
+    '<div style="font-size:11.5px;color:var(--ink-muted);margin-top:8px;">فرمول: '+esc(r.formula)+'</div>'+
+    '<div style="font-size:12.5px;color:var(--ink);margin-top:10px;line-height:1.9;">'+esc(r.ai)+'</div>'+
+  '</div>';
+}
+function openBARatioTrend(key){ UI.baRatioTrend = key; render(); }
+function closeBARatioTrend(){ UI.baRatioTrend = null; render(); }
+
+function buildBARatioTable(p){
+
+  var years = (BA_FINANCIAL_DEMO.years||[]).slice();
+  var detailKey = UI.baRatioTrend;
+  var html = '';
+
+  BA_RATIO_TABLE.categories.forEach(function(cat){
+    var ratios = BA_RATIO_TABLE.ratios.filter(function(r){ return r.cat===cat; });
+    if (!ratios.length) return;
+    html += '<tr class="cmp-cat-row"><td colspan="'+(years.length+2)+'">'+esc(cat)+'</td></tr>';
+    ratios.forEach(function(r){
+      var values = years.map(function(_,i){ return r.compute(i); });
+      var cells = values.map(function(v,i){
+        var cls = baRatioColorClass(r,v);
+        return '<td class="num-cell '+(r.key===detailKey?'ba-ratio-active':'')+'" style="color:var(--'+(cls==='ok'?'positive':(cls==='warn'?'gold':'negative'))+');">'+
+          (v==null ? '—' : numSpan(esc(formatBARatioValue(r,v))))+'</td>';
+      }).join('');
+      html += '<tr style="cursor:pointer;" onclick="openBARatioTrend(\''+r.key+'\')" title="مشاهده روند">'+
+        '<td style="font-weight:600;">'+esc(r.label)+'</td>'+cells+
+        '<td style="text-align:left;color:var(--ink-faint);font-size:11px;">'+(r.key===detailKey?'▲':'روند ▼')+'</td>'+
+      '</tr>';
+      if (r.key===detailKey){
+        html += '<tr><td colspan="'+(years.length+2)+'">'+buildBARatioTrend(p,r,years,values)+'</td></tr>';
+      }
+    });
+  });
+
+  var yearsHeader = years.map(function(y){ return '<th class="num-cell">'+esc(y)+'</th>'; }).join('');
+
+  return '<div class="section-head"><div><h3>نسبت‌های مالی</h3>'+
+    '<span class="hint">همه نسبت‌ها به ترتیب؛ کلیک روی هر نسبت → روند در سال‌های مختلف</span></div>'+
+    '<span class="pill source AI_SUGGESTED">تحلیل مالی</span></div>'+
+    '<div class="table-wrap"><table><thead><tr><th>نسبت</th>'+yearsHeader+'<th></th></tr></thead><tbody>'+html+'</tbody></table></div>';
+}
+
+/* =========================================================
+   نسبت‌های مالی — نسخه کامل (شیت 5-1) در ۴ گروه (شیت 5)
+   + چند-انتخابی و تحلیل AI
+   ========================================================= */
+var BA_RATIO_GROUPS2 = [
+  { key:'debt', label:'اهرم مالی و ساختار سرمایه + پوشش بهره', ratios:[
+    { key:'debt_ratio2', label:'نسبت بدهی (کل بدهی به کل دارایی)', format:'PERCENT', formula:'کل بدهی‌ها ÷ کل دارایی‌ها', sv:38.5, status:function(v){return v>70?'risk':(v>50?'warn':'ok');}, ai:'سهم دارایی‌ها از محل بدهی؛ محدوده زیر ۵۰٪ معمولاً مطلوب است.', compute:function(i){var l=baFinVal('balance','جمع بدهی‌ها',i),a=baFinVal('balance','جمع دارایی‌ها',i); if(l==null||a==null||a===0)return null; return l/a*100;} },
+    { key:'fin_lev', label:'اهرم مالی (کل دارایی به حقوق مالکانه)', format:'RATIO', formula:'کل دارایی‌ها ÷ حقوق صاحبان سهام', sv:1.62, status:function(v){return v>3?'risk':(v>1.5?'warn':'ok');}, ai:'نسبت کل دارایی به سرمایه؛ اهرم بالاتر یعنی اتکای بیشتر به بدهی.', compute:function(i){var a=baFinVal('balance','جمع دارایی‌ها',i),e=baFinVal('balance','حقوق صاحبان سهام',i); if(a==null||e==null||e===0)return null; return a/e;} },
+    { key:'debt_eq2', label:'نسبت بدهی به حقوق مالکانه', format:'RATIO', formula:'کل بدهی‌ها ÷ حقوق صاحبان سهام', sv:0.62, status:function(v){return v>2?'risk':(v>1?'warn':'ok');}, ai:'میزان بدهی نسبت به سرمایه؛ نسبت پایین‌تر ریسک اعتباری کمتری دارد.', compute:function(i){var l=baFinVal('balance','جمع بدهی‌ها',i),e=baFinVal('balance','حقوق صاحبان سهام',i); if(l==null||e==null||e===0)return null; return l/e;} },
+    { key:'int_cover', label:'پوشش هزینه بهره (EBIT ÷ هزینه مالی)', format:'RATIO', formula:'سود عملیاتی ÷ هزینه مالی', sv:2.14, status:function(v){return v<1.5?'risk':(v<3?'warn':'ok');}, ai:'توان پوشش هزینه‌های تأمین مالی از محل سود عملیاتی.', compute:function(i){var op=baFinVal('income','سود (زیان) عملیاتی',i),intr=baFinVal('income','هزینه مالی',i); if(op==null||intr==null||intr===0)return null; return op/intr;} },
+    { key:'ebitda_cover', label:'پوشش هزینه بهره (EBITDA ÷ هزینه مالی)', format:'RATIO', formula:'EBITDA ÷ هزینه مالی', sv:2.14, status:function(v){return v<2?'risk':(v<4?'warn':'ok');}, ai:'اظهار پوشش بهره با احتساب استهلاک؛ سنجه سخت‌گیرانه‌تر.', compute:function(i){return null>0?null:null;} },
+    { key:'cash_cover', label:'پوشش هزینه بهره نقدی (CFO ÷ هزینه مالی)', format:'RATIO', formula:'جریان نقد عملیاتی ÷ هزینه مالی', sv:1.34, status:function(v){return v<1.2?'risk':(v<2?'warn':'ok');}, ai:'توان پرداخت نقدی هزینه مالی؛ معیار نقدینگی پوشش بهره.' },
+    { key:'dscr2', label:'نسبت پوشش خدمت بدهی (DSCR)', format:'RATIO', formula:'جریان نقد عملیاتی ÷ کل تعهدات بدهی', sv:1.24, status:function(v){return v<1.1?'risk':(v<1.5?'warn':'ok');}, ai:'توان بازپرداخت اصل و سود بدهی از محل جریان نقد عملیاتی.' }
+  ]},
+  { key:'activity', label:'کارایی و فعالیت + نقدینگی', ratios:[
+    { key:'asset_turn2', label:'گردش کل دارایی‌ها', format:'RATIO', formula:'فروش خالص ÷ کل دارایی‌ها', sv:0.86, status:function(v){return v<0.5?'risk':(v<1?'warn':'ok');}, ai:'تولید درآمد به ازای هر واحد دارایی.', compute:function(i){var r=baFinVal('income','فروش خالص',i),a=baFinVal('balance','جمع دارایی‌ها',i); if(r==null||a==null||a===0)return null; return r/a;} },
+    { key:'ca_turn', label:'گردش دارایی‌های جاری', format:'RATIO', formula:'فروش خالص ÷ دارایی‌های جاری', sv:2.0, status:function(v){return v<1?'risk':(v<2?'warn':'ok');}, ai:'کارایی استفاده از دارایی‌های جاری در تولید درآمد.' },
+    { key:'fa_turn', label:'گردش دارایی ثابت', format:'RATIO', formula:'فروش خالص ÷ دارایی‌های ثابت مشهود', sv:1.20, status:function(v){return v<0.5?'risk':(v<1?'warn':'ok');}, ai:'بهره‌وری از دارایی‌های ثابت شرکت.' },
+    { key:'inv_turn', label:'گردش موجودی کالا', format:'RATIO', formula:'بهای تمام‌شده ÷ متوسط موجودی', sv:5.24, status:function(v){return v<3?'risk':(v<5?'warn':'ok');}, ai:'سرعت فروش موجودی کالا در طول دوره.' },
+    { key:'cash_cycle', label:'دوره تبدیل وجه نقد', format:'NUMBER', formula:'DIO + DSO − DPO', sv:46.7, status:function(v){return v>90?'risk':(v>45?'warn':'ok');}, ai:'مدت زمان تبدیل منابع به وجه نقد؛ کوتاه‌تر یعنی نقدینگی بهتر.', svUnit:'روز' },
+    { key:'receivable_days', label:'دوره وصول مطالبات', format:'NUMBER', formula:'مطالبات ÷ فروش × ۳۶۵', sv:46.7, status:function(v){return v>90?'risk':(v>45?'warn':'ok');}, ai:'سرعت وصول مطالبات از مشتریان.', svUnit:'روز' },
+    { key:'payable_days', label:'دوره پرداخت بدهی', format:'NUMBER', formula:'بدهی ÷ بهای تمام‌شده × ۳۶۵', sv:51.8, status:function(v){return v>90?'risk':(v>45?'warn':'ok');}, ai:'مدت زمان پرداخت به تأمین‌کنندگان.', svUnit:'روز' }
+  ]},
+  { key:'profitability', label:'سودآوری و بازدهی', ratios:[
+    { key:'gross_margin2', label:'حاشیه سود ناخالص', format:'PERCENT', formula:'سود ناخالص ÷ فروش خالص × ۱۰۰', sv:39.5, status:function(v){return v<15?'risk':(v<30?'warn':'ok');}, ai:'سهم باقی‌مانده از فروش پس از کسر بهای تمام‌شده.', compute:function(i){var g=baFinVal('income','سود ناخالص فروش',i),r=baFinVal('income','فروش خالص',i); if(g==null||r==null||r===0)return null; return g/r*100;} },
+    { key:'operating_margin2', label:'حاشیه سود عملیاتی', format:'PERCENT', formula:'سود عملیاتی ÷ فروش خالص × ۱۰۰', sv:30.0, status:function(v){return v<5?'risk':(v<15?'warn':'ok');}, ai:'سودآوری فعالیت اصلی شرکت.', compute:function(i){var o=baFinVal('income','سود (زیان) عملیاتی',i),r=baFinVal('income','فروش خالص',i); if(o==null||r==null||r===0)return null; return o/r*100;} },
+    { key:'ebitda_margin', label:'EBITDA', format:'PERCENT', formula:'سود عملیاتی + استهلاک ÷ فروش × ۱۰۰', sv:34.0, status:function(v){return v<10?'risk':(v<20?'warn':'ok');}, ai:'سودآوری پیش از کسر استهلاک و مالی.' },
+    { key:'net_margin2', label:'حاشیه سود خالص', format:'PERCENT', formula:'سود خالص ÷ فروش خالص × ۱۰۰', sv:23.6, status:function(v){return v<5?'risk':(v<15?'warn':'ok');}, ai:'سهم سود خالص از هر واحد فروش.', compute:function(i){var n=baFinVal('income','سود (زیان) خالص',i),r=baFinVal('income','فروش خالص',i); if(n==null||r==null||r===0)return null; return n/r*100;} },
+    { key:'roa2', label:'بازده دارایی‌ها (ROA)', format:'PERCENT', formula:'سود خالص ÷ کل دارایی‌ها × ۱۰۰', sv:7.6, status:function(v){return v<5?'risk':(v<10?'warn':'ok');}, ai:'کارایی کل دارایی‌ها در تولید سود.', compute:function(i){var n=baFinVal('income','سود (زیان) خالص',i),a=baFinVal('balance','جمع دارایی‌ها',i); if(n==null||a==null||a===0)return null; return n/a*100;} },
+    { key:'roe2', label:'بازده حقوق صاحبان سهام (ROE)', format:'PERCENT', formula:'سود خالص ÷ حقوق صاحبان سهام × ۱۰۰', sv:13.7, status:function(v){return v<10?'risk':(v<20?'warn':'ok');}, ai:'بازدهی سرمایه صاحبان سهام.', compute:function(i){var n=baFinVal('income','سود (زیان) خالص',i),e=baFinVal('balance','حقوق صاحبان سهام',i); if(n==null||e==null||e===0)return null; return n/e*100;} },
+    { key:'roic', label:'بازده سرمایه به کارگرفته‌شده (ROIC)', format:'PERCENT', formula:'NOPAT ÷ سرمایه به‌کاررفته × ۱۰۰', sv:12.6, status:function(v){return v<5?'risk':(v<10?'warn':'ok');}, ai:'بازدهی کل سرمایه به‌کارگرفته‌شده در عملیات.' }
+  ]},
+  { key:'cash_market', label:'جریان نقد و کیفیت سود + بازار و سهام', ratios:[
+    { key:'cfo_margin', label:'حاشیه جریان نقد عملیاتی', format:'PERCENT', formula:'جریان نقد عملیاتی ÷ فروش × ۱۰۰', sv:19.2, status:function(v){return v<5?'risk':(v<12?'warn':'ok');}, ai:'سهم فروش که به جریان نقد تبدیل می‌شود؛ سنجه کیفیت سود.' },
+    { key:'fcf', label:'جریان نقد آزاد (FCF)', format:'PERCENT', formula:'جریان نقد عملیاتی − سرمایه‌گذاری', sv:6.7, status:function(v){return v<0?'risk':(v<5?'warn':'ok');}, ai:'وجه نقد آزاد پس از هزینه‌های سرمایه‌ای.' },
+    { key:'ebitda_fcf', label:'تبدیل EBITDA به FCF', format:'PERCENT', formula:'FCF ÷ EBITDA × ۱۰۰', sv:31, status:function(v){return v<20?'risk':(v<40?'warn':'ok');}, ai:'کیفیت تبدیل سود عملیاتی به وجه نقد آزاد.' },
+    { key:'eps', label:'سود هر سهم (EPS)', format:'CURRENCY', formula:'سود خالص ÷ تعداد سهام', sv:2.10, status:function(v){return v<0?'risk':'ok';}, ai:'سود خالص به ازای هر سهم.' },
+    { key:'dps', label:'سود سهام هر سهم (DPS)', format:'CURRENCY', formula:'سود سهام ÷ تعداد سهام', sv:1.60, status:function(v){return v<0?'risk':'ok';}, ai:'سود نقدی پرداختی به ازای هر سهم.' },
+    { key:'pe', label:'نسبت قیمت به سود (P/E)', format:'RATIO', formula:'قیمت سهم ÷ سود هر سهم', sv:11.90, status:function(v){return v>30?'risk':(v>20?'warn':'ok');}, ai:'ارزش‌گذاری بازار نسبت به سود؛ پایین‌تر معمولاً ارزان‌تر.' },
+    { key:'ps', label:'نسبت قیمت به فروش (P/S)', format:'RATIO', formula:'ارزش بازار ÷ فروش', sv:4.80, status:function(v){return v>8?'risk':(v>5?'warn':'ok');}, ai:'ارزش‌گذاری نسبت به فروش شرکت.' },
+    { key:'pb', label:'نسبت قیمت به ارزش دفتری (P/B)', format:'RATIO', formula:'قیمت سهم ÷ ارزش دفتری هر سهم', sv:1.05, status:function(v){return v>5?'risk':(v>3?'warn':'ok');}, ai:'ارزش‌گذاری نسبت به حقوق صاحبان سهام.' },
+    { key:'ev_ebitda', label:'EV/EBITDA', format:'RATIO', formula:'ارزش شرکت ÷ EBITDA', sv:6.86, status:function(v){return v>15?'risk':(v>10?'warn':'ok');}, ai:'ارزش کل بنگاه نسبت به EBITDA.' }
+  ]}
+];
+function toggleBARatioSel(key){
+  UI.baRatioSel[key] = !UI.baRatioSel[key];
+  render();
+}
+function runBARatioAiAnalysis(){
+  var sel = Object.keys(UI.baRatioSel).filter(function(k){ return UI.baRatioSel[k]; });
+  if (!sel.length){ alert('حداقل یک نسبت را انتخاب کنید.'); return; }
+  UI.baRatioAi = sel.map(function(k){
+    var found = null;
+    BA_RATIO_GROUPS2.forEach(function(g){ g.ratios.forEach(function(r){ if (r.key===k) found=r; }); });
+    return found;
+  }).filter(Boolean);
+  render();
+}
+function closeBARatioAi(){ UI.baRatioAi = null; render(); }
+function buildBARatioTable2(p){
+
+  var years = (BA_FINANCIAL_DEMO.years||[]).slice();
+  var detailKey = UI.baRatioTrend;
+  var hasSel = Object.keys(UI.baRatioSel).some(function(k){ return UI.baRatioSel[k]; });
+
+  var aiPanel = '';
+  if (UI.baRatioAi && UI.baRatioAi.length){
+    aiPanel = '<div class="card card-pad" style="margin:0 0 16px;border-color:var(--accent);background:var(--accent-tint);">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">'+
+        '<div style="font-weight:700;font-size:13px;">✦ تحلیل هوشمند نسبت‌های انتخاب‌شده</div>'+
+        '<button class="btn small ghost" onclick="closeBARatioAi()">بستن ✕</button>'+
+      '</div>'+
+      '<p style="font-size:12.5px;color:var(--ink);line-height:1.9;margin:10px 0 0;">'+
+        'بر اساس «'+UI.baRatioAi.map(function(r){return esc(r.label);}).join('»، ')+'» و داده‌های صورت‌های مالی، ترکیب این نسبت‌ها نشان‌دهنده‌ی وضعیت مالی شرکت است. '+
+        'ترکیب حاشیه‌سود و بازدهی، به‌همراه پوشش بهره و نقدینگی، تصویری منسجم از ریسک و کارایی عملیات ارائه می‌دهد. '+
+        '(خروجی نمونه — در نسخه عملیاتی توسط مدل AI بر اساس داده‌های واقعی تولید می‌شود.)'+
+      '</p>'+
+    '</div>';
+  }
+
+  var html = '';
+  BA_RATIO_GROUPS2.forEach(function(group){
+    html += '<tr class="cmp-cat-row"><td colspan="'+(years.length+3)+'">'+esc(group.label)+'</td></tr>';
+    group.ratios.forEach(function(r){
+      var values = years.map(function(_,i){
+        if (r.compute) return r.compute(i);
+        return (r.sv!=null)?r.sv:null;
+      });
+      var cells = values.map(function(v,i){
+        var cls = baRatioColorClass(r, v);
+        return '<td class="num-cell '+(r.key===detailKey?'ba-ratio-active':'')+'" style="color:var(--'+(cls==='ok'?'positive':(cls==='warn'?'gold':'negative'))+');">'+
+          (v==null?'—':numSpan(esc(formatBARatioValue(r,v))))+'</td>';
+      }).join('');
+      html += '<tr style="cursor:pointer;" onclick="toggleBARatioSel(\''+r.key+'\')" title="انتخاب برای تحلیل هوشمند">'+
+        '<td style="font-weight:600;"><input type="checkbox" '+((UI.baRatioSel[r.key])?'checked':'')+' onclick="event.stopPropagation();toggleBARatioSel(\''+r.key+'\')" style="margin-inline-end:6px;"/><span>'+
+        (r.key===detailKey?'▲ ':'')+esc(r.label)+'</span></td>'+cells+
+        '<td style="text-align:left;color:var(--ink-faint);font-size:11px;" onclick="event.stopPropagation();openBARatioTrend(\''+r.key+'\')" title="مشاهده روند">روند</td>'+
+      '</tr>';
+      if (r.key===detailKey){
+        html += '<tr><td colspan="'+(years.length+3)+'">'+buildBARatioTrend(p,r,years,values)+'</td></tr>';
+      }
+    });
+    if (group.ratios.some(function(r){return r.key===detailKey;})){
+      var found = null; group.ratios.forEach(function(r){ if(r.key===detailKey) found=r; });
+    }
+  });
+
+  var yearsHeader = years.map(function(y){ return '<th class="num-cell">'+esc(y)+'</th>'; }).join('');
+
+  return '<div class="section-head"><div><h3>نسبت‌های مالی</h3>'+
+    '<span class="hint">چهار گروه (شیت 5-1) — تیک بزنید و «تحلیل هوشمند» بزنید؛ یا روی «روند» کلیک کنید تا نمودار سال‌ها باز شود</span></div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'+
+      (hasSel ? '<button class="btn small primary" onclick="runBARatioAiAnalysis()">✦ تحلیل هوشمند «'+Object.keys(UI.baRatioSel).filter(function(k){return UI.baRatioSel[k];}).length+'» نسبت</button>' : '')+
+      '<span class="pill source AI_SUGGESTED">تحلیل مالی</span>'+
+    '</div></div>'+
+    aiPanel+
+    '<div class="table-wrap"><table><thead><tr><th>نسبت</th>'+yearsHeader+'<th></th></tr></thead><tbody>'+html+'</tbody></table></div>';
+}
+
 function buildBARatioAnalysis(p){
+
+  return buildBARatioTable2(p);
 
   var group =
     BA_RATIO_GROUPS[

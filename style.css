@@ -301,6 +301,7 @@
   tbody tr:last-child td{ border-bottom:none; }
   tbody tr:hover{ background:var(--surface-2); }
   td.num-cell, th.num-cell{ text-align:left; }
+  .ba-ratio-active{ background:var(--accent-tint) !important; }
 
   /* ---------- watchlist comparison ---------- */
   .stat-dot{ width:7px; height:7px; border-radius:50%; display:inline-block; flex:none; }

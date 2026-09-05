@@ -2063,7 +2063,7 @@ function personName(key){ return DB.people[key] ? DB.people[key].name : key; }
 /* =========================================================================
    وضعیت واسط کاربری
    ========================================================================= */
-var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null };
+var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1 };
 
 /* =========================================================================
    نقش‌ها و سطوح دسترسی (RBAC)
@@ -2183,7 +2183,7 @@ function toggleField(key){ UI.expandedField = (UI.expandedField===key) ? null : 
 function resetDemo(){
   if (!confirm('بازنشانی نسخه‌ی نمایشی به حالت اولیه؟ تمام تغییرات شما پاک می‌شود.')) return;
   seed();
-  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null };
+  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1 };
   render();
 }
 
@@ -24547,12 +24547,50 @@ var FS_WIZARD_STEPS = [
   { key:'fs-results', label:'نتایج' },
   { key:'report', label:'گزارش' }
 ];
-function fsWizGo(key){ setTab(key); window.scrollTo(0,0); }
+function fsWizGo(key){ UI.fsItemIndex = -1; setTab(key); window.scrollTo(0,0); }
 function fsWizNav(dir){
   var keys = FS_WIZARD_STEPS.map(function(s){ return s.key; });
   var i = keys.indexOf(UI.tab);
   var j = i + dir;
   if (j>=0 && j<keys.length) fsWizGo(keys[j]);
+}
+/* تأیید مرحلهٔ فعلی و رفتن به مرحلهٔ بعد (فرود در بالای همان مرحله) */
+function fsWizConfirm(pid){
+  var p = DB.projects[pid];
+  p.fsWizardDone = p.fsWizardDone || {};
+  p.fsWizardDone[UI.tab] = true;
+  var keys = FS_WIZARD_STEPS.map(function(s){ return s.key; });
+  var i = keys.indexOf(UI.tab);
+  if (i<0){ return; }
+  var j = i+1;
+  if (j<keys.length){ fsWizGo(keys[j]); }
+  else { fsWizGo('report'); }
+}
+/* قدم‌زدنِ درونِ صفحه: ایتم‌به‌ایتم از بالا به پایین، بعد رفتن به مرحلهٔ بعد */
+function fsWizItems(){
+  var view = document.querySelector('.project-main .view');
+  if (!view) return [];
+  var nodes = view.querySelectorAll('.section-head h3, h3, h4, .profile-card-title, .q-section-title');
+  var arr=[]; for (var i=0;i<nodes.length;i++) arr.push(nodes[i]);
+  return arr;
+}
+function fsWizNext(pid){
+  var items = fsWizItems();
+  var idx = (UI.fsItemIndex==null) ? -1 : UI.fsItemIndex;
+  if (items.length){
+    if (idx < items.length-1){
+      idx++;
+      UI.fsItemIndex = idx;
+      var prev = document.querySelector('.fs-item-target');
+      if (prev) prev.classList.remove('fs-item-target');
+      items[idx].scrollIntoView({ behavior:'smooth', block:'start' });
+      items[idx].classList.add('fs-item-target');
+      return;
+    }
+  }
+  /* ایتم‌های این صفحه تمام شد → مرحلهٔ بعد */
+  UI.fsItemIndex = -1;
+  fsWizConfirm(pid);
 }
 function buildFSWizardStepper(p){
   var keys = FS_WIZARD_STEPS.map(function(s){ return s.key; });
@@ -24560,8 +24598,9 @@ function buildFSWizardStepper(p){
   if (cur<0) cur = 0;
   var items = FS_WIZARD_STEPS.map(function(s,i){
     var active = s.key===UI.tab;
-    return '<button type="button" class="fs-wiz-step'+(active?' active':'')+(i<cur?' done':'')+'" onclick="fsWizGo(\''+s.key+'\')">'+
-      '<span class="n">'+(i+1)+'</span><span class="l">'+esc(s.label)+'</span></button>';
+    var isDone = (p.fsWizardDone && p.fsWizardDone[s.key]) || i<cur;
+    return '<button type="button" class="fs-wiz-step'+(active?' active':'')+(isDone?' done':'')+'" onclick="fsWizGo(\''+s.key+'\')">'+
+      '<span class="n">'+(isDone?'✓':(i+1))+'</span><span class="l">'+esc(s.label)+'</span></button>';
   }).join('');
   return '<div class="fs-wizard no-print">'+
     '<div class="fs-wizard-steps">'+items+'</div>'+
@@ -24575,12 +24614,17 @@ function buildFSWizardBottomNav(p){
   var isLast = cur===total-1;
   var isFirst = cur===0;
   /*
-    در RTL: دکمهٔ «بعدی» (اصلی) سمت راست، «قبلی» سمت چپ؛ فلش‌ها جهت درست.
-    چون جهت صفحه RTL است، ترتیب عناصر: بعدی (اول→راست)، مرحله، قبلی (آخر→چپ).
+    در RTL: دکمهٔ «تأیید و بعدی» (اصلی) سمت راست، «قبلی» سمت چپ؛ فلش‌ها جهت درست.
   */
+  var confirmed = !!(p.fsWizardDone && p.fsWizardDone[UI.tab]);
   return '<div class="fs-wizard-bottom no-print">'+
-    '<button type="button" class="btn small primary" '+(isLast?'onclick="fsWizGo(\'report\')"':'onclick="fsWizNav(1)"')+'>'+ (isLast?'تکمیل و مشاهده گزارش ✓':'بعدی ◂') +'</button>'+
-    '<span class="fs-wiz-count">مرحله '+numSpan((cur+1)+' از '+total)+' — '+esc(FS_WIZARD_STEPS[cur].label)+'</span>'+
+    '<button type="button" class="btn small primary" onclick="fsWizNext(\''+p.id+'\')">'+
+      (isLast ? 'تکمیل و مشاهده گزارش ✓' : (confirmed ? '✔ تأییدشده — ادامه ◂' : 'بعدی ◂'))+
+    '</button>'+
+    '<span class="fs-wiz-count">مرحله '+numSpan((cur+1)+' از '+total)+' — '+esc(FS_WIZARD_STEPS[cur].label)+
+      (confirmed ? ' <span class="pill ok">تأیید شده</span>' : '')+
+      '<span style="font-size:10px;color:var(--ink-faint);margin-inline-start:6px;">(با هر «بعدی» ایتم بعدی همین صفحه نمایش داده می‌شود)</span>'+
+    '</span>'+
     '<button type="button" class="btn small" '+(isFirst?'disabled':'onclick="fsWizNav(-1)"')+'>▸ قبلی</button>'+
   '</div>';
 }

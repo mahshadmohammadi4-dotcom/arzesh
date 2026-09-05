@@ -323,6 +323,7 @@
   }
   .fs-wiz-count{ font-size:11.5px; color:var(--ink-muted); font-weight:600; }
   .has-fs-wizard .view{ padding-bottom:86px; }
+  .fs-item-target{ outline:2px solid var(--gold); outline-offset:4px; border-radius:6px; scroll-margin-top:70px; }
   .bm-select{ cursor:pointer; }
   .ba-risk-select{ display:inline-flex; align-items:center; gap:5px; font-size:11px; color:var(--ink-muted); cursor:pointer; flex:none; }
   .ba-risk-select input{ cursor:pointer; }

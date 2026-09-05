@@ -23808,6 +23808,58 @@ function buildFSSourceBadge(
 
 }
 
+/* =========================================================
+   FS-2 — نگاه سیستم (درک هوشمند از توصیف + پیش‌پُر شدن)
+   ========================================================= */
+function fsUndVal(id){ var el=document.getElementById(id); return el?el.value.trim():''; }
+function applyFSUnderstanding(pid){
+  var p = DB.projects[pid];
+  var sector = fsUndVal('fs-und-sector');
+  var scale = fsUndVal('fs-und-scale');
+  var inv = parseFloat(fsUndVal('fs-und-invest'));
+  var rate = parseFloat(fsUndVal('fs-und-rate'));
+  p.questionnaire = p.questionnaire || { base:{} };
+  if (sector) p.questionnaire.base.sector = sector;
+  if (scale) p.questionnaire.base.scale = scale;
+  aiFillDetailQuestionnaire(pid);
+  if (!isNaN(inv) && inv>0){
+    var f1 = p.fields['feasibility.initialInvestment'];
+    if (f1){ f1.values.push({ id:uid(), source:'MANUAL_ENTRY', value:inv, at:new Date() }); f1.pinnedId = f1.values[f1.values.length-1].id; }
+  }
+  if (!isNaN(rate) && rate>0){
+    var f2 = p.fields['feasibility.discountRate'];
+    if (f2){ f2.values.push({ id:uid(), source:'MANUAL_ENTRY', value:rate/100, at:new Date() }); f2.pinnedId = f2.values[f2.values.length-1].id; }
+  }
+  recomputeKpis(p);
+  p.fsUnderstanding = { confirmed:true, at:new Date() };
+  render();
+}
+function buildFSUnderstanding(p){
+  var d = p.feasibilityDescription || '';
+  var base = (p.questionnaire && p.questionnaire.base) || {};
+  var sector = base.sector || '';
+  var scale = base.scale || '';
+  var inv = fieldVal(p,'feasibility.initialInvestment');
+  var rate = fieldVal(p,'feasibility.discountRate');
+  var sectors = ['تولید صنعتی','خدمات','بازرگانی','فناوری اطلاعات','ساختمان و عمران','کشاورزی','سایر'];
+  var scales = ['کوچک','متوسط','بزرگ'];
+  function opt(list, cur){
+    return list.map(function(o){ return '<option value="'+o+'"'+((cur===o)?' selected':'')+'>'+o+'</option>'; }).join('');
+  }
+  return '<div class="card card-pad" style="margin-bottom:16px;border-color:var(--accent);background:var(--accent-tint);">'+
+    '<div class="profile-card-title">🤖 نگاه سیستم (درک هوشمند)</div>'+
+    (d ? '<blockquote style="margin:0 0 10px;padding:10px 12px;background:var(--surface);border-inline-start:3px solid var(--accent);border-radius:8px;font-size:12px;color:var(--ink-muted);line-height:1.8;">'+esc(d)+'</blockquote>'
+       : '<p class="empty">توصیفی از طرح ثبت نشده است؛ بخش‌ها را دستی تکمیل کنید.</p>')+
+    '<div class="q-row"><span class="lbl">حوزه فعالیت</span><select id="fs-und-sector">'+opt(sectors,sector)+'</select></div>'+
+    '<div class="q-row"><span class="lbl">مقیاس طرح</span><select id="fs-und-scale">'+opt(scales,scale)+'</select></div>'+
+    '<div class="q-row"><span class="lbl">سرمایه‌گذاری اولیه (ریال)</span><input id="fs-und-invest" type="number" value="'+(inv!=null?inv:'')+'"/></div>'+
+    '<div class="q-row"><span class="lbl">نرخ تنزیل (٪)</span><input id="fs-und-rate" type="number" value="'+(rate!=null?(rate*100):'')+'"/></div>'+
+    '<div class="edit-actions" style="margin-top:10px;">'+
+      '<button class="btn small primary" onclick="applyFSUnderstanding(\''+p.id+'\')">✔ تأیید و ادامه</button>'+
+      '<span class="hint">مقادیر پیشنهادی را ویرایش و تأیید کنید تا جدول‌های طرح پُر شوند.</span>'+
+    '</div>'+
+  '</div>';
+}
 function buildFSBaseQuestionnaire(p){
 
   var d =
@@ -23960,6 +24012,8 @@ function buildFSBaseQuestionnaire(p){
       '</p>'+
 
     '</div>'+
+
+    buildFSUnderstanding(p)+
 
 
 

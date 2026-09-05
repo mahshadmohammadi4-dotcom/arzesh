@@ -24534,6 +24534,56 @@ function buildFSPlaceholderTab(
 
 }
 
+/* =========================================================
+   FS-3 — ویزارد مراحلی امکان‌سنجی (استپر قابل‌کلیک + بعدی/قبلی + پرش به گزارش)
+   ========================================================= */
+var FS_WIZARD_STEPS = [
+  { key:'questionnaire', label:'پرسشنامه' },
+  { key:'fs-fixed-investment', label:'سرمایه ثابت' },
+  { key:'fs-operating-costs', label:'هزینه‌ها' },
+  { key:'fs-sales', label:'فروش' },
+  { key:'fs-working-capital', label:'سرمایه در گردش' },
+  { key:'fs-financing', label:'تأمین مالی' },
+  { key:'fs-results', label:'نتایج' },
+  { key:'report', label:'گزارش' }
+];
+function fsWizGo(key){ setTab(key); window.scrollTo(0,0); }
+function fsWizNav(dir){
+  var keys = FS_WIZARD_STEPS.map(function(s){ return s.key; });
+  var i = keys.indexOf(UI.tab);
+  var j = i + dir;
+  if (j>=0 && j<keys.length) fsWizGo(keys[j]);
+}
+function buildFSWizardStepper(p){
+  var keys = FS_WIZARD_STEPS.map(function(s){ return s.key; });
+  var cur = keys.indexOf(UI.tab);
+  if (cur<0) cur = 0;
+  var items = FS_WIZARD_STEPS.map(function(s,i){
+    var active = s.key===UI.tab;
+    return '<button type="button" class="fs-wiz-step'+(active?' active':'')+(i<cur?' done':'')+'" onclick="fsWizGo(\''+s.key+'\')">'+
+      '<span class="n">'+(i+1)+'</span><span class="l">'+esc(s.label)+'</span></button>';
+  }).join('');
+  return '<div class="fs-wizard no-print">'+
+    '<div class="fs-wizard-steps">'+items+'</div>'+
+  '</div>';
+}
+function buildFSWizardBottomNav(p){
+  var keys = FS_WIZARD_STEPS.map(function(s){ return s.key; });
+  var cur = keys.indexOf(UI.tab);
+  if (cur<0) cur = 0;
+  var total = keys.length;
+  var isLast = cur===total-1;
+  var isFirst = cur===0;
+  /*
+    در RTL: دکمهٔ «بعدی» (اصلی) سمت راست، «قبلی» سمت چپ؛ فلش‌ها جهت درست.
+    چون جهت صفحه RTL است، ترتیب عناصر: بعدی (اول→راست)، مرحله، قبلی (آخر→چپ).
+  */
+  return '<div class="fs-wizard-bottom no-print">'+
+    '<button type="button" class="btn small primary" '+(isLast?'onclick="fsWizGo(\'report\')"':'onclick="fsWizNav(1)"')+'>'+ (isLast?'تکمیل و مشاهده گزارش ✓':'بعدی ◂') +'</button>'+
+    '<span class="fs-wiz-count">مرحله '+numSpan((cur+1)+' از '+total)+' — '+esc(FS_WIZARD_STEPS[cur].label)+'</span>'+
+    '<button type="button" class="btn small" '+(isFirst?'disabled':'onclick="fsWizNav(-1)"')+'>▸ قبلی</button>'+
+  '</div>';
+}
 function buildProjectView(){
   var p = DB.projects[UI.projectId];
   if (!p){ go('portfolio'); return ''; }
@@ -25068,8 +25118,12 @@ else if(
 '</div></div>'+
     '<div class="project-shell">'+
       '<nav class="tool-rail no-print">'+railHtml+'</nav>'+
-      '<div class="project-main"><div class="view">'+body+'</div></div>'+
-    '</div>';
+      '<div class="project-main'+(p.type==='FEASIBILITY_STUDY'?' has-fs-wizard':'')+'">'+
+        (p.type==='FEASIBILITY_STUDY' ? buildFSWizardStepper(p) : '')+
+        '<div class="view">'+body+'</div>'+
+      '</div>'+
+    '</div>'+
+    (p.type==='FEASIBILITY_STUDY' ? buildFSWizardBottomNav(p) : '');
 }
 
 /* =========================================================================

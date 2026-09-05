@@ -305,6 +305,24 @@
   tbody tr:hover{ background:var(--surface-2); }
   td.num-cell, th.num-cell{ text-align:left; }
   .ba-ratio-active{ background:var(--accent-tint) !important; }
+  /* ویزارد مراحلی امکان‌سنجی */
+  .fs-wizard{ padding:18px 32px 0; max-width:1180px; margin-inline:auto; width:100%; }
+  .fs-wizard-steps{ display:flex; gap:6px; flex-wrap:wrap; }
+  .fs-wiz-step{ display:inline-flex; align-items:center; gap:7px; border:1px solid var(--border); background:var(--surface); border-radius:9px; padding:7px 11px; font-size:11.5px; font-weight:600; color:var(--ink-muted); cursor:pointer; }
+  .fs-wiz-step .n{ width:18px; height:18px; border-radius:50%; background:var(--surface-3); color:var(--ink-muted); display:inline-flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:700; }
+  .fs-wiz-step:hover{ border-color:var(--border-strong); color:var(--ink); }
+  .fs-wiz-step.active{ border-color:var(--accent); background:var(--accent-tint); color:var(--accent-ink); }
+  .fs-wiz-step.active .n{ background:var(--accent); color:#fff; }
+  .fs-wiz-step.done .n{ background:var(--positive); color:#fff; }
+  .fs-wizard-nav{ display:flex; gap:8px; align-items:center; margin-top:12px; flex-wrap:wrap; }
+  /* نوار عملیات چسبان پایین (رفع بن‌بست) */
+  .fs-wizard-bottom{
+    position:fixed; inset-inline:0; bottom:0; z-index:9;
+    background:var(--surface); border-top:1px solid var(--border);
+    padding:10px 18px; display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap;
+  }
+  .fs-wiz-count{ font-size:11.5px; color:var(--ink-muted); font-weight:600; }
+  .has-fs-wizard .view{ padding-bottom:86px; }
   .bm-select{ cursor:pointer; }
   .ba-risk-select{ display:inline-flex; align-items:center; gap:5px; font-size:11px; color:var(--ink-muted); cursor:pointer; flex:none; }
   .ba-risk-select input{ cursor:pointer; }

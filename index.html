@@ -23130,31 +23130,6 @@ function buildFSFixedInvestmentCategory(
 
               '<div class="fs-row-actions">'+
 
-                (
-                  row.source ===
-                    'AI_SUGGESTED' &&
-                  !row.confirmed
-                    ?
-
-                    '<button '+
-                      'type="button" '+
-                      'class="btn small" '+
-                      'onclick="fsAcceptFixedInvestmentRow(\''+
-                        p.id+
-                        '\',\''+
-                        category+
-                        '\',\''+
-                        row.id+
-                      '\')">'+
-
-                      'تأیید'+
-
-                    '</button>'
-
-                    :
-
-                    ''
-                )+
 
 
                 '<button '+
@@ -23304,6 +23279,15 @@ function buildFSFixedInvestmentCategory(
 
       '<button type="button" class="btn small fs-add-row" style="margin-inline-start:8px;" onclick="fsAddFixedExtraCol(\''+p.id+'\',\''+category+'\')">+ افزودن ستون</button>'+
 
+      '<button type="button" class="btn small fs-add-row '+(getFSCategoryConfirm(p,category)?'primary':'')+'" style="margin-inline-start:8px;" onclick="fsConfirmFixedCategory(\''+p.id+'\',\''+category+'\')">'+
+        (getFSCategoryConfirm(p,category)?'✔ تأیید شده':'✔ تأیید کل جدول')+
+      '</button>'+
+
+      '<div class="fs-color-legend" style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--ink-muted);">'+
+        '<span><span class="data-state-dot blue" style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:4px;"></span>پیشنهاد سیستم (قابل تغییر)</span>'+
+        '<span><span class="data-state-dot red" style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:4px;"></span>ویرایش‌شده توسط شما</span>'+
+        '<span style="color:var(--positive);">✔ تأییدشده</span>'+
+      '</div>'+
 
     '</div>'
 
@@ -23512,6 +23496,19 @@ function fsFindCustomTable(p, id){
   if (!d || !Array.isArray(d.customTables)) return null;
   var found = null; d.customTables.forEach(function(t){ if (t.id===id) found=t; });
   return found;
+}
+function fsConfirmFixedCategory(pid, cat){
+  var p = DB.projects[pid], d = fsEnsureFixedObject(p);
+  var arr = d && d[cat];
+  if (!arr) return;
+  arr.forEach(function(r){ r.confirmed = true; });
+  render();
+}
+function getFSCategoryConfirm(p, cat){
+  var d = ensureFSFixedInvestmentData(p);
+  var arr = d && d[cat];
+  if (!arr || !arr.length) return false;
+  return arr.every(function(r){ return !!r.confirmed; });
 }
 function fsAddFixedCategory(pid){
   var p = DB.projects[pid], d = fsEnsureFixedObject(p);

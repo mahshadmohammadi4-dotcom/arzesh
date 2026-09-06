@@ -14333,7 +14333,7 @@ function buildReportPagesHTML(p, forPrint){
     var isFirst = idx===0;
     var isLast = !hasPlan && idx===pageKeys.length-1;
     var sigs = allPagesApprovers.concat(isFirst?firstApprovers:[]).concat(isLast?lastApprovers:[]);
-    return '<section class="a4-page">'+
+    return '<section class="a4-page report-theme-'+esc(p.reportTheme||'classic')+'">'+
       '<div class="a4-head"><h4>'+esc(def.title)+'</h4><span class="page-type-badge no-print">'+(def.type==='AI'?'تولیدشده با AI':'استاتیک')+'</span></div>'+
       buildPageBody(p, pageKey) + sigRow(sigs) + buildPageEditZone(p, pageKey, forPrint) +
     '</section>';
@@ -14348,6 +14348,21 @@ function buildReportPagesHTML(p, forPrint){
   return pagesHtml + planHtml;
 }
 
+var REPORT_THEMES = {
+  classic:{ label:'رسمی (Classic)', hint:'تم پاستلی/رسمی — نقطه سبز-خاکستری' },
+  modern:{ label:'مدرن', hint:'تم مدرن — آبی/سفید' },
+  gold:{ label:'کلاسیک طلایی', hint:'تم رسمی با لهجه طلایی' }
+};
+function applyReportTheme(pid, theme){
+  var p=DB.projects[pid]; if(!REPORT_THEMES[theme]) theme='classic';
+  p.reportTheme = theme; render();
+}
+function buildReportThemePicker(p){
+  var cur=p.reportTheme||'classic';
+  return '<select class="role-select" style="background:var(--surface-2);color:var(--ink);border-color:var(--border-strong);padding:7px 9px;border-radius:7px;font-size:11.5px;" onchange="applyReportTheme(\''+p.id+'\',this.value)" title="تم گزارش">'+
+    Object.keys(REPORT_THEMES).map(function(k){ return '<option value="'+k+'"'+((cur===k)?' selected':'')+'>🎨 '+REPORT_THEMES[k].label+'</option>'; }).join('')+
+  '</select>';
+}
 function buildReportTab(p){
   var commentsHtml = p.report.comments.map(function(c){
     return '<div class="comment-box"><div class="who">'+esc(personName(c.person))+' · '+fmtDate(c.at)+'</div><p style="margin-top:3px;">'+esc(c.body)+'</p></div>';
@@ -14357,6 +14372,7 @@ function buildReportTab(p){
   return '<div class="report-toolbar no-print">'+
       '<div><h3 style="font-size:14.5px;">'+esc(p.report.title)+'</h3><span class="hint">'+p.report.pageKeys.length+' صفحه در فهرست مطالب</span></div>'+
        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'+
+         buildReportThemePicker(p)+
          (p.type==='FEASIBILITY_STUDY'
            ? '<select class="role-select" style="background:var(--surface-2);color:var(--ink);border-color:var(--border-strong);padding:7px 9px;border-radius:7px;font-size:11.5px;" onchange="applyFSReportGoal(\''+p.id+'\',this.value)">'+
              Object.keys(FS_REPORT_GOALS).map(function(k){ return '<option value="'+k+'"'+((p.reportGoal||'banking')===k?' selected':'')+'>'+esc(FS_REPORT_GOALS[k].label)+'</option>'; }).join('')+

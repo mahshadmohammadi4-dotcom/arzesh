@@ -6421,3 +6421,10 @@ grid-template-columns:1fr;
   }
 
 }
+/* تم‌های گزارش */
+.report-theme-classic .a4-page{ background:#ffffff; }
+.report-theme-classic .a4-head h4{ color:#154f46; }
+.report-theme-modern .a4-page{ background:#fbfdff; border-color:#c9d8e8; }
+.report-theme-modern .a4-head h4{ color:#2b5f8f; }
+.report-theme-gold .a4-page{ background:#fffdf7; border-color:#e2c98c; }
+.report-theme-gold .a4-head h4{ color:#8a6218; }

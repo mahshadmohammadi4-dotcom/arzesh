@@ -22586,7 +22586,14 @@ function buildFSOperatingCostsTab(p){
     '</div>'+
 
 
-    content
+    content +
+
+    buildFSOperatingCustomTables(p)+
+
+    '<div class="edit-actions" style="margin-top:8px;">'+
+      '<button class="btn small" onclick="fsAddOperatingCustomTable(\''+p.id+'\')">+ افزودن جدول سفارشی</button>'+
+      '<span class="hint">جدول کاملاً آزاد (ستون/ردیف/سلول) — مثل سرمایه‌گذاری ثابت.</span>'+
+    '</div>'
 
   );
 
@@ -23509,7 +23516,13 @@ function fsFindCustomTable(p, id){
 function fsAddFixedCategory(pid){
   var p = DB.projects[pid], d = fsEnsureFixedObject(p);
   if (!d) return;
-  d.customTables.push({ id:'CT-'+uid(), title:'جدول سفارشی', columns:[{label:'ستون ۱'},{label:'ستون ۲'}], rows:[['','']] });
+  d.customTables.push({ id:'CT-'+uid(), loc:'fixed', title:'جدول سفارشی', columns:[{label:'ستون ۱'},{label:'ستون ۲'}], rows:[['','']] });
+  render();
+}
+function fsAddOperatingCustomTable(pid){
+  var p = DB.projects[pid], d = fsEnsureFixedObject(p);
+  if (!d) return;
+  d.customTables.push({ id:'CT-'+uid(), loc:'op', title:'جدول سفارشی', columns:[{label:'ستون ۱'},{label:'ستون ۲'}], rows:[['','']] });
   render();
 }
 function fsSetCustom(title, pid, id){
@@ -23562,7 +23575,16 @@ function buildFSCustomTable(p, t){
 function fsBuildFixedCustomTables(p){
   var d = ensureFSFixedInvestmentData(p);
   if (!d || !Array.isArray(d.customTables)) return '';
-  return d.customTables.map(function(t){ return buildFSCustomTable(p, t); }).join('');
+  return d.customTables.filter(function(t){ return t.loc!=='op'; }).map(function(t){ return buildFSCustomTable(p, t); }).join('');
+}
+function buildFSOperatingCustomTables(p){
+  var d = ensureFSFixedInvestmentData(p);
+  if (!d || !Array.isArray(d.customTables)) return '';
+  var out = d.customTables.filter(function(t){ return t.loc==='op'; }).map(function(t){ return buildFSCustomTable(p, t); }).join('');
+  if (out){
+    out += '<div class="edit-actions" style="margin-top:8px;"><button class="btn small" onclick="fsAddOperatingCustomTable(\''+p.id+'\')">+ افزودن جدول سفارشی دیگر</button></div>';
+  }
+  return out;
 }
 /* گاردِ انعطافِ کنترل‌شده برای جدول‌های پیش‌فرض سرمایه‌گذاری ثابت */
 /* مکانیزم عمومی «ستون اضافی» برای جدول‌های خطی امکان‌سنجی */
@@ -24791,6 +24813,12 @@ function fsWizNav(dir){
 /* تأیید مرحلهٔ فعلی و رفتن به مرحلهٔ بعد (فرود در بالای همان مرحله) */
 function fsWizConfirm(pid){
   var p = DB.projects[pid];
+  /* هنگام عبور از «پرسشنامه پایه» و تکمیل اطلاعات، هشدار سهمیه ظاهر شود (فقط یک‌بار) */
+  if (UI.tab==='questionnaire' && !p.fsWarnedQuota){
+    if (!confirm('اطلاعات شما تکمیل شد. با ادامه، طرح امکان‌سنجی شما ایجاد می‌شود و ۱ واحد از سهمیه‌ی «امکان‌سنجی» مصرف می‌گردد.\n\nبرای تولید طرح امکان‌سنجی بعدی، باید یک پروژه‌ی جدید بسازید.\n\nادامه می‌دهید؟')){ render(); return; }
+    p.fsWarnedQuota = true;
+    p.fsQuotaNotice = true;
+  }
   p.fsWizardDone = p.fsWizardDone || {};
   p.fsWizardDone[UI.tab] = true;
   var keys = FS_WIZARD_STEPS.map(function(s){ return s.key; });
@@ -27447,11 +27475,11 @@ function buildCheckoutPage(){
       '<h3>تکمیل خرید — '+esc(pk.label)+'</h3>'+
       '<p style="font-size:11.5px;color:var(--ink-muted);margin:-10px 0 16px;line-height:1.7;">'+esc(pk.desc)+'</p>'+
       (s.error ? '<div class="auth-error">'+esc(s.error)+'</div>' : '')+
-      '<div class="auth-field"><label>نام حساب / شرکت یا هلدینگ</label><input id="su-company" type="text" placeholder="مثلاً هلدینگ رهبران"/></div>'+
-      '<div class="auth-field"><label>نام و نام خانوادگی مدیر حساب</label><input id="su-name" type="text" placeholder="نام کامل"/></div>'+
-      '<div class="auth-field"><label>ایمیل</label><input id="su-email" type="email" placeholder="you@company.com"/></div>'+
-      '<div class="auth-field"><label>شماره تماس</label><input id="su-phone" type="text" placeholder="09xxxxxxxxx"/></div>'+
-      '<div class="auth-field"><label>رمز عبور</label><input id="su-pass" type="password" placeholder="حداقل ۶ کاراکتر"/></div>'+
+      '<div class="auth-field"><label>نام حساب / شرکت یا هلدینگ</label><input id="su-company" type="text" value="'+esc(s.company||'هلدینگ رهبران')+'" placeholder="مثلاً هلدینگ رهبران"/></div>'+
+      '<div class="auth-field"><label>نام و نام خانوادگی مدیر حساب</label><input id="su-name" type="text" value="'+esc(s.name||'مدیر حساب')+'" placeholder="نام کامل"/></div>'+
+      '<div class="auth-field"><label>ایمیل</label><input id="su-email" type="email" value="'+esc(s.email||'najm')+'" placeholder="you@company.com"/></div>'+
+      '<div class="auth-field"><label>شماره تماس</label><input id="su-phone" type="text" value="'+esc(s.phone||'09100000000')+'" placeholder="09xxxxxxxxx"/></div>'+
+      '<div class="auth-field"><label>رمز عبور</label><input id="su-pass" type="password" value="'+esc(s.pass||'najm123')+'" placeholder="حداقل ۶ کاراکتر"/></div>'+
       customRows+
       '<div class="auth-actions"><button class="btn" onclick="backToLanding()">بازگشت</button><button class="btn primary" onclick="submitSignup()">تکمیل خرید و پرداخت</button></div>'+
     '</div>'+
@@ -27465,8 +27493,8 @@ function buildLoginPage(){
       '<h3>ورود به سامانه</h3>'+
       (lf.justSignedUp ? '<div class="auth-error" style="color:var(--accent-ink);background:var(--accent-soft);">خرید بسته با موفقیت انجام شد. اکنون وارد شوید.</div>' : '')+
       (lf.error ? '<div class="auth-error">'+esc(lf.error)+'</div>' : '')+
-      '<div class="auth-field"><label>نام کاربری</label><input id="li-email" type="text" value="'+esc(lf.email||'')+'" placeholder="نام کاربری"/></div>'+
-      '<div class="auth-field"><label>رمز عبور</label><input id="li-pass" type="password" placeholder="رمز عبور"/></div>'+
+      '<div class="auth-field"><label>نام کاربری</label><input id="li-email" type="text" value="'+esc(lf.email || (DB.authAccount && DB.authAccount.email) || '')+'" placeholder="نام کاربری"/></div>'+
+      '<div class="auth-field"><label>رمز عبور</label><input id="li-pass" type="password" value="'+esc(lf.password || (DB.authAccount && DB.authAccount.password) || '')+'" placeholder="رمز عبور"/></div>'+
       '<button class="btn primary" style="width:100%;" onclick="submitLogin()">ورود</button>'+
       '<p class="auth-hint">برای ورود آزمایشی: najm / najm123</p>'+
       '<p class="auth-hint">بسته‌ای ندارید؟ <a href="javascript:void(0)" onclick="backToLanding()" style="color:var(--accent);font-weight:700;">مشاهده بسته‌ها</a></p>'+

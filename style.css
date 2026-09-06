@@ -4904,6 +4904,15 @@ grid-template-columns:1fr;
 }
 
 
+.fs-cost-row.user-edited{
+  background:
+    color-mix(
+      in srgb,
+      var(--accent-tint) 80%,
+      transparent
+    );
+  box-shadow:inset 3px 0 0 var(--accent);
+}
 .fs-cost-row.ai-suggested{
 
   background:

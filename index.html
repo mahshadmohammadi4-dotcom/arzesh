@@ -22861,8 +22861,11 @@ function fsAddFixedInvestmentRow(
     source:
       'MANUAL_ENTRY',
 
+    edited:
+      true,
+
     confirmed:
-      true
+      false
 
   });
 
@@ -22970,14 +22973,33 @@ function buildFSFixedInvestmentCategory(
 
         var rowClass =
           (
-            row.source ===
-              'AI_SUGGESTED' &&
-            !row.confirmed
+            row.edited
           )
             ?
-            ' ai-suggested'
+            ' user-edited'
             :
-            '';
+            (
+              row.source ===
+                'AI_SUGGESTED' &&
+              !row.confirmed
+            )
+              ?
+              ' ai-suggested'
+              :
+              '';
+
+        var statusDot =
+          row.edited
+            ?
+            '<span class="data-state-dot blue" style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:6px;vertical-align:middle;" title="ویرایش‌شده توسط شما"></span>'
+            :
+            (
+              row.source === 'AI_SUGGESTED' && !row.confirmed
+                ?
+                '<span class="data-state-dot blue" style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:6px;vertical-align:middle;background:var(--accent);" title="پیشنهاد سیستم"></span>'
+                :
+                ''
+            );
 
 
         return (
@@ -22993,6 +23015,8 @@ function buildFSFixedInvestmentCategory(
             */
 
             '<td>'+
+
+              statusDot+
 
               '<input '+
                 'class="fs-table-input desc" '+

@@ -2063,7 +2063,7 @@ function personName(key){ return DB.people[key] ? DB.people[key].name : key; }
 /* =========================================================================
    وضعیت واسط کاربری
    ========================================================================= */
-var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null };
+var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null, wcEditor:null };
 
 /* =========================================================================
    نقش‌ها و سطوح دسترسی (RBAC)
@@ -2183,7 +2183,7 @@ function toggleField(key){ UI.expandedField = (UI.expandedField===key) ? null : 
 function resetDemo(){
   if (!confirm('بازنشانی نسخه‌ی نمایشی به حالت اولیه؟ تمام تغییرات شما پاک می‌شود.')) return;
   seed();
-  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null };
+  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null, wcEditor:null };
   render();
 }
 
@@ -18671,6 +18671,31 @@ function fsWorkingCapitalTotal(p){
 
 }
 
+function openWCEditor(pid, rowId){ UI.wcEditor = rowId; render(); }
+function closeWCEditor(){ UI.wcEditor = null; render(); }
+function buildWCEditor(pid){
+  var p=DB.projects[pid], rows=ensureFSWorkingCapitalData(p);
+  var row = rows.filter(function(r){ return r.id===UI.wcEditor; })[0];
+  if(!row) return '';
+  function fld(field,label,num){
+    return '<div class="q-row"><span class="lbl">'+label+'</span><input type="'+(num?'number':'text')+'" value="'+esc(row[field])+'" onchange="fsUpdateWorkingCapitalRow(\''+pid+'\',\''+row.id+'\',\''+field+'\',this.value)"/></div>';
+  }
+  var srcName = (SOURCE_LABEL && SOURCE_LABEL[row.source]) || row.source;
+  var x = fsXGet(p, 'wc');
+  var xCols = (x && x.cols) || [];
+  var xRows = xCols.map(function(c){
+    var val = (x.values[row.id] && x.values[row.id][c.id]) || '';
+    return '<div class="q-row"><span class="lbl">'+esc(c.label)+'</span><input type="text" value="'+esc(val)+'" onchange="fsXSetCell(\''+pid+'\',\'wc\',\''+row.id+'\',\''+c.id+'\',this.value)"/></div>';
+  }).join('');
+  var xBlock = xCols.length ? ('<div class="q-section-title">ستون‌های اضافی</div>'+xRows) : '';
+  return '<div class="modal-backdrop" onclick="if(event.target===this) closeWCEditor()"><div class="modal-box">'+
+    '<div class="modal-head"><h3>ویرایش آیتم</h3><button class="btn small ghost" onclick="closeWCEditor()">✕</button></div>'+
+    '<div class="value-item" style="margin-bottom:12px;"><span class="pill source '+esc(row.source)+'">'+esc(srcName)+'</span><span class="v" style="font-size:11px;color:var(--ink-muted);">منبع داده</span></div>'+
+    fld('description','شرح')+fld('basis','مبنای محاسبه')+fld('quantity','مقدار',true)+fld('unit','واحد')+fld('unitPrice','نرخ/مبلغ واحد',true)+fld('sign','اثر بر سرمایه در گردش',true)+
+    xBlock+
+    '<div class="modal-actions"><span></span><button class="btn small primary" onclick="closeWCEditor()">ذخیره و بستن</button></div>'+
+  '</div></div>';
+}
 function fsUpdateWorkingCapitalRow(
   pid,
   rowId,
@@ -18859,7 +18884,7 @@ function buildFSWorkingCapitalTab(p){
               :
               'fs-cost-row'
           )+
-        '">'+
+        '" style="cursor:pointer;" onclick="openWCEditor(\''+p.id+'\',\''+row.id+'\')">'+
 
 
           '<td>'+
@@ -18918,15 +18943,11 @@ function buildFSWorkingCapitalTab(p){
             )+
           '</td>'+
 
-
-          '<td>'+
-            buildFSOperatingSource(row)+
-          '</td>'+
-
+          fsXCell(p.id, 'wc', row.id)+
 
           '<td>'+
             '<button class="btn small ghost" '+
-              'onclick="fsRemoveWorkingCapitalRow(\''+
+              'onclick="event.stopPropagation();fsRemoveWorkingCapitalRow(\''+
                 p.id+'\',\''+
                 row.id+
               '\')">'+
@@ -19003,10 +19024,10 @@ function buildFSWorkingCapitalTab(p){
               '<th>نرخ / مبلغ واحد ('+
                 esc(currency.short)+
               ')</th>'+
-              '<th>اثر سرمایه در گردش</th>'+
-              '<th>منبع</th>'+
-              '<th>عملیات</th>'+
-            '</tr>'+
+               '<th>اثر سرمایه در گردش</th>'+
+               fsXHead(p.id, 'wc')+
+               '<th>عملیات</th>'+
+             '</tr>'+
           '</thead>'+
 
           '<tbody>'+
@@ -19027,6 +19048,8 @@ function buildFSWorkingCapitalTab(p){
       '</button>'+
 
       '<button type="button" class="btn small fs-add-row '+(getWCConfirm(p)?'primary':'')+'" style="margin-inline-start:8px;" onclick="fsConfirmWorkingCapital(\''+p.id+'\')">'+(getWCConfirm(p)?'✔ تأیید شده':'✔ تأیید کل جدول')+'</button>'+
+
+      fsXButton(p.id, 'wc')+
 
     '</div>'
 
@@ -27842,6 +27865,11 @@ document.getElementById('screenRoot').innerHTML = localizeHtml(
 
   (UI.fieldState
     ? buildFieldStateModal()
+    : ''
+  )+
+
+  (UI.wcEditor
+    ? buildWCEditor(UI.projectId)
     : ''
   )+
 

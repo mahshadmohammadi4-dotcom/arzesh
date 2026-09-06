@@ -2063,7 +2063,7 @@ function personName(key){ return DB.people[key] ? DB.people[key].name : key; }
 /* =========================================================================
    وضعیت واسط کاربری
    ========================================================================= */
-var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null, wcEditor:null, fEditor:null, feEditor:null };
+var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null, wcEditor:null, fEditor:null, feEditor:null, oEditor:null };
 
 /* =========================================================================
    نقش‌ها و سطوح دسترسی (RBAC)
@@ -2183,7 +2183,7 @@ function toggleField(key){ UI.expandedField = (UI.expandedField===key) ? null : 
 function resetDemo(){
   if (!confirm('بازنشانی نسخه‌ی نمایشی به حالت اولیه؟ تمام تغییرات شما پاک می‌شود.')) return;
   seed();
-  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null, wcEditor:null, fEditor:null, feEditor:null };
+  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null, wcEditor:null, fEditor:null, feEditor:null, oEditor:null };
   render();
 }
 
@@ -18237,9 +18237,6 @@ function buildFSSalesTab(p){
           '</td>'+
 
 
-          '<td>'+
-            buildFSOperatingSource(row)+
-          '</td>'+
 
 
           '<td>'+
@@ -18424,7 +18421,6 @@ function buildFSSalesTab(p){
               '<th>رشد مقدار %</th>'+
               '<th>رشد نرخ %</th>'+
               '<th>فروش سال ۱</th>'+
-              '<th>منبع</th>'+
               '<th>عملیات</th>'+
             '</tr>'+
           '</thead>'+
@@ -21730,6 +21726,28 @@ function buildFSOperatingSource(row){
 
 }
 
+function openOEditor(pid, mode, category, rowId){ UI.oEditor = {mode:mode, category:category, rowId:rowId}; render(); }
+function closeOEditor(){ UI.oEditor = null; render(); }
+function buildOEditor(pid){
+  var o=UI.oEditor; if(!o) return '';
+  var data=ensureFSOperatingCostData(DB.projects[pid]);
+  var row = data[o.mode][o.category].filter(function(r){ return r.id===o.rowId; })[0];
+  if(!row) return '';
+  var fields=[['description','شرح','text'],['productId','محصول','text'],['title','عنوان شغلی','text'],['quantity','مقدار','number'],['unitPrice','نرخ واحد','number'],['unit','واحد','text'],['headcountY1','نیروی سال ۱','number'],['headcountY2','نیروی سال ۲','number'],['headcountY3','نیروی سال ۳','number'],['monthlySalary','حقوق ماهانه','number']];
+  var rowsOut=fields.filter(function(fs){ return row[fs[0]]!==undefined; }).map(function(fs){
+    return '<div class="q-row"><span class="lbl">'+fs[1]+'</span><input type="'+(fs[2]==='number'?'number':'text')+'" value="'+esc(row[fs[0]])+'" onchange="fsUpdateOperatingRow(\''+pid+'\',\''+o.mode+'\',\''+o.category+'\',\''+row.id+'\',\''+fs[0]+'\',this.value)"/></div>';
+  }).join('');
+  var srcName=(SOURCE_LABEL&&SOURCE_LABEL[row.source])||row.source;
+  var key='op:'+o.mode+':'+o.category;
+  var x=fsXGet(DB.projects[pid],key); var xCols=(x&&x.cols)||[];
+  var xRows=xCols.map(function(c){ var val=(x.values[row.id]&&x.values[row.id][c.id])||''; return '<div class="q-row"><span class="lbl">'+esc(c.label)+'</span><input type="text" value="'+esc(val)+'" onchange="fsXSetCell(\''+pid+'\',\''+key+'\',\''+row.id+'\',\''+c.id+'\',this.value)"/></div>'; }).join('');
+  return '<div class="modal-backdrop" onclick="if(event.target===this) closeOEditor()"><div class="modal-box">'+
+    '<div class="modal-head"><h3>ویرایش آیتم هزینه</h3><button class="btn small ghost" onclick="closeOEditor()">✕</button></div>'+
+    '<div class="value-item" style="margin-bottom:12px;"><span class="pill source '+esc(row.source)+'">'+esc(srcName)+'</span><span class="v" style="font-size:11px;color:var(--ink-muted);">منبع داده</span></div>'+
+    rowsOut+(xCols.length?('<div class="q-section-title">ستون‌های اضافی</div>'+xRows):'')+
+    '<div class="modal-actions"><span></span><button class="btn small primary" onclick="closeOEditor()">ذخیره و بستن</button></div>'+
+  '</div></div>';
+}
 function buildFSOperatingSimpleCategory(
   p,
   mode,
@@ -21863,6 +21881,9 @@ function buildFSOperatingSimpleCategory(
               '<div class="fs-row-actions">'+
 
 
+                (mode==='process' || mode==='project'
+                  ? '<button type="button" class="btn small primary" onclick="openOEditor(\''+p.id+'\',\''+mode+'\',\''+category+'\',\''+row.id+'\')">ویرایش</button>'
+                  : '')+
                 '<button class="btn small ghost" '+
                   'onclick="fsRemoveOperatingRow(\''+
                   p.id+'\',\''+
@@ -22098,6 +22119,9 @@ function buildFSOperatingLaborCategory(
               '<div class="fs-row-actions">'+
 
 
+                (mode==='process' || mode==='project'
+                  ? '<button type="button" class="btn small primary" onclick="openOEditor(\''+p.id+'\',\''+mode+'\',\''+category+'\',\''+row.id+'\')">ویرایش</button>'
+                  : '')+
                 '<button class="btn small ghost" '+
                   'onclick="fsRemoveOperatingRow(\''+
                   p.id+'\',\''+
@@ -23361,12 +23385,6 @@ function buildFSFixedInvestmentCategory(
       '<button type="button" class="btn small fs-add-row '+(getFSCategoryConfirm(p,category)?'primary':'')+'" style="margin-inline-start:8px;" onclick="fsConfirmFixedCategory(\''+p.id+'\',\''+category+'\')">'+
         (getFSCategoryConfirm(p,category)?'✔ تأیید شده':'✔ تأیید کل جدول')+
       '</button>'+
-
-      '<div class="fs-color-legend" style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--ink-muted);">'+
-        '<span><span class="data-state-dot blue" style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:4px;"></span>پیشنهاد سیستم (قابل تغییر)</span>'+
-        '<span><span class="data-state-dot red" style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:4px;"></span>ویرایش‌شده توسط شما</span>'+
-        '<span style="color:var(--positive);">✔ تأییدشده</span>'+
-      '</div>'+
 
     '</div>'
 
@@ -27921,6 +27939,11 @@ document.getElementById('screenRoot').innerHTML = localizeHtml(
 
   (UI.feEditor
     ? buildFixedEditor(UI.projectId)
+    : ''
+  )+
+
+  (UI.oEditor
+    ? buildOEditor(UI.projectId)
     : ''
   )+
 

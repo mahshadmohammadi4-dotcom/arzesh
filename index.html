@@ -18731,15 +18731,26 @@ function fsUpdateWorkingCapitalRow(
   row.source =
     'MANUAL_ENTRY';
 
+  row.edited =
+    true;
 
   row.confirmed =
-    true;
+    false;
 
 
   render();
 
 }
 
+function fsConfirmWorkingCapital(pid){
+  var rows = ensureFSWorkingCapitalData(DB.projects[pid]);
+  rows.forEach(function(r){ r.confirmed = true; });
+  render();
+}
+function getWCConfirm(p){
+  var rows = ensureFSWorkingCapitalData(p);
+  return !!(rows && rows.length) && rows.every(function(r){ return !!r.confirmed; });
+}
 function fsAddWorkingCapitalRow(pid){
 
   var p =
@@ -18772,7 +18783,9 @@ function fsAddWorkingCapitalRow(pid){
 
       source:'MANUAL_ENTRY',
 
-      confirmed:true
+      edited:true,
+
+      confirmed:false
 
     });
 
@@ -19012,6 +19025,8 @@ function buildFSWorkingCapitalTab(p){
         '+ افزودن آیتم'+
 
       '</button>'+
+
+      '<button type="button" class="btn small fs-add-row '+(getWCConfirm(p)?'primary':'')+'" style="margin-inline-start:8px;" onclick="fsConfirmWorkingCapital(\''+p.id+'\')">'+(getWCConfirm(p)?'✔ تأیید شده':'✔ تأیید کل جدول')+'</button>'+
 
     '</div>'
 

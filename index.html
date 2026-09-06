@@ -2063,7 +2063,7 @@ function personName(key){ return DB.people[key] ? DB.people[key].name : key; }
 /* =========================================================================
    وضعیت واسط کاربری
    ========================================================================= */
-var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null, wcEditor:null, fEditor:null };
+var UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null, wcEditor:null, fEditor:null, feEditor:null };
 
 /* =========================================================================
    نقش‌ها و سطوح دسترسی (RBAC)
@@ -2183,7 +2183,7 @@ function toggleField(key){ UI.expandedField = (UI.expandedField===key) ? null : 
 function resetDemo(){
   if (!confirm('بازنشانی نسخه‌ی نمایشی به حالت اولیه؟ تمام تغییرات شما پاک می‌شود.')) return;
   seed();
-  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null, wcEditor:null, fEditor:null };
+  UI = { stage:'landing', selectedPackageKey:null, signup:null, loginForm:null, view:'portfolio', projectId:null, tab:'overview', expandedField:null, watchlistId:null, currentRole:'pm', wizard:null, tocDraft:null, docCategory:'legal', watchlistPicker:null, packageModalOpen:false, editingPage:null, historyOpen:{}, recentProjectIds:[], kpiDetail:null, roleModalOpen:false, approverEditor:null, spreadsheetConflictsOnly:false, priorityEditor:null, expandedAnalysis:null, externalPreview:null, fieldState:null, profileSubTab:'profile', baRatioTrend:null, baRatioSel:{}, baRatioAi:null, baRiskSel:{}, baRiskAi:null, baAgentMode:null, baAgentOut:null, fsItemIndex:-1, fsWizStep:"questionnaire", fsColEditor:null, wcEditor:null, fEditor:null, feEditor:null };
   render();
 }
 
@@ -22982,6 +22982,24 @@ function buildFSFixedRowSource(row){
 
 }
 
+function openFixedEditor(pid, category, rowId){ UI.feEditor = {category:category, rowId:rowId}; render(); }
+function closeFixedEditor(){ UI.feEditor = null; render(); }
+function buildFixedEditor(pid){
+  var o=UI.feEditor; if(!o) return '';
+  var p=DB.projects[pid], d=ensureFSFixedInvestmentData(p);
+  var arr = d[o.category]||[]; var row=null; arr.forEach(function(r){ if(r.id===o.rowId) row=r; });
+  if(!row) return '';
+  function fld(field,label,num){ return '<div class="q-row"><span class="lbl">'+label+'</span><input type="'+(num?'number':'text')+'" value="'+esc(row[field])+'" onchange="fsUpdateFixedInvestmentRow(\''+pid+'\',\''+o.category+'\',\''+row.id+'\',\''+field+'\',this.value)"/></div>'; }
+  var srcName=(SOURCE_LABEL&&SOURCE_LABEL[row.source])||row.source;
+  var extra=(arr.extraCols||[]).map(function(c){ var val=(row.extras&&row.extras[c.id])||''; return '<div class="q-row"><span class="lbl">'+esc(c.label)+'</span><input type="text" value="'+esc(val)+'" onchange="fsSetFixedExtraCell(\''+pid+'\',\''+o.category+'\',\''+row.id+'\',\''+c.id+'\',this.value)"/></div>'; }).join('');
+  return '<div class="modal-backdrop" onclick="if(event.target===this) closeFixedEditor()"><div class="modal-box">'+
+    '<div class="modal-head"><h3>ویرایش آیتم</h3><button class="btn small ghost" onclick="closeFixedEditor()">✕</button></div>'+
+    '<div class="value-item" style="margin-bottom:12px;"><span class="pill source '+esc(row.source)+'">'+esc(srcName)+'</span><span class="v" style="font-size:11px;color:var(--ink-muted);">منبع داده</span></div>'+
+    fld('description','شرح')+fld('quantity','مقدار',true)+fld('unit','واحد')+fld('unitPrice','قیمت واحد',true)+
+    (extra?('<div class="q-section-title">ستون‌های اضافی</div>'+extra):'')+
+    '<div class="modal-actions"><span></span><button class="btn small primary" onclick="closeFixedEditor()">ذخیره و بستن</button></div>'+
+  '</div></div>';
+}
 function buildFSFixedInvestmentCategory(
   p,
   category,
@@ -23187,10 +23205,11 @@ function buildFSFixedInvestmentCategory(
             */
 
             '<td>'+
+               '<div class="fs-row-actions">'+
 
-              '<div class="fs-row-actions">'+
-
-
+                (category==='land' || category==='building' || category==='utilities' || category==='machinery' || category==='vehicles' || category==='furniture' || category==='other'
+                  ? '<button type="button" class="btn small primary" onclick="openFixedEditor(\''+p.id+'\',\''+category+'\',\''+row.id+'\')">ویرایش</button>'
+                  : '')+
 
                 '<button '+
                   'type="button" '+
@@ -27897,6 +27916,11 @@ document.getElementById('screenRoot').innerHTML = localizeHtml(
 
   (UI.fEditor
     ? buildFEditor(UI.projectId)
+    : ''
+  )+
+
+  (UI.feEditor
+    ? buildFixedEditor(UI.projectId)
     : ''
   )+
 

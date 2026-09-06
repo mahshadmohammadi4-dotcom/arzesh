@@ -14370,7 +14370,7 @@ function buildReportTab(p){
   var canSignThis = myPendingApproval(p);
 
   return '<div class="report-toolbar no-print">'+
-      '<div><h3 style="font-size:14.5px;">'+esc(p.report.title)+'</h3><span class="hint">'+p.report.pageKeys.length+' صفحه در فهرست مطالب</span></div>'+
+      '<div><h3 style="font-size:14.5px;">'+esc(p.report.title)+'</h3><span class="hint">'+p.report.pageKeys.length+' صفحه در فهرست مطالب · <span class="pill source AI_SUGGESTED" title="اینجا ایجنت گزارش در دسترس است؛ بازنویسی/خلاصه/لحن با یک اسکتر">🤖 ایجنت گزارش</span></span></div>'+
        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'+
          buildReportThemePicker(p)+
          (p.type==='FEASIBILITY_STUDY'

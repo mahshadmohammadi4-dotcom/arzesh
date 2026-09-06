@@ -1629,11 +1629,19 @@ function openTocEditor(pid){
   all.forEach(function(k){ if (order.indexOf(k)===-1) order.push(k); });
   var included = {};
   order.forEach(function(k){ included[k] = p.report.pageKeys.indexOf(k)!==-1; });
-  UI.tocDraft = { projectId:pid, order:order, included:included, dragKey:null };
+  UI.tocDraft = { projectId:pid, order:order, included:included, dragKey:null, depth:{} };
   render();
 }
 function closeTocEditor(){ UI.tocDraft = null; render(); }
 function toggleTocItem(key){ UI.tocDraft.included[key] = !UI.tocDraft.included[key]; render(); }
+function tocIndent(key, delta){
+  var d = UI.tocDraft;
+  var cur = d.depth[key] || 0;
+  var nxt = cur + delta;
+  if (nxt<0 || nxt>2) return;
+  d.depth[key] = nxt;
+  render();
+}
 function moveTocItem(key, dir){
   var d = UI.tocDraft, i = d.order.indexOf(key), j = i+dir;
   if (j<0 || j>=d.order.length) return;
@@ -1688,8 +1696,10 @@ function buildTocEditor(p){
     return '<div class="value-item" draggable="true" ondragstart="tocDragStart(\''+key+'\')" ondragover="event.preventDefault()" ondrop="tocDropOn(\''+key+'\')" style="cursor:grab;">' +
       '<span class="drag-handle" title="جابه‌جایی با کشیدن" style="flex:none;color:var(--ink-faint);cursor:grab;">⠿⠿</span>'+
       '<input type="checkbox" '+(d.included[key]?'checked':'')+' onchange="toggleTocItem(\''+key+'\')" title="نمایش/عدم نمایش در گزارش"/>' +
-      '<span class="v" style="flex:1;font-weight:600;">'+esc(def.title)+'</span>' +
+      '<span class="v" style="flex:1;font-weight:600;'+(d.depth[key]?'padding-inline-start:'+(24*(d.depth[key]))+'px;':'')+'">'+esc(def.title)+'</span>' +
       '<span class="pill muted">'+(def.type==='AI'?'AI':'استاتیک')+'</span>' +
+      '<button class="btn small ghost" onclick="tocIndent(\''+key+'\',-1)" '+(d.depth[key]?'' :'disabled')+' title="سطح بالاتر">↰</button>' +
+      '<button class="btn small ghost" onclick="tocIndent(\''+key+'\',1)" '+((d.depth[key]||0)>=2?'disabled':'')+' title="تبدیل به زیرمجموعه">↳</button>' +
       '<button class="btn small ghost" onclick="moveTocItem(\''+key+'\',-1)" '+(i===0?'disabled':'')+' title="بالاتر">▲</button>' +
       '<button class="btn small ghost" onclick="moveTocItem(\''+key+'\',1)" '+(i===d.order.length-1?'disabled':'')+' title="پایین‌تر">▼</button>' +
     '</div>';

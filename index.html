@@ -20803,6 +20803,33 @@ function buildFSResultRow(
 
 }
 
+function fsSalesProductName(p, productId){
+  var d=ensureFSPrototypeState(p); var prods=((d&&d.questionnaire)||{}).products||[];
+  var f=prods.filter(function(x){ return x.id===productId; })[0];
+  return f?(f.name):productId;
+}
+function buildFSResultsSalesTable(p){
+  var rows=ensureFSSalesData(p);
+  var model=buildFSResultModel(p);
+  var ys=(model.years||[]).map(function(y){ return y.year; });
+  if(!ys.length) return '';
+  function cell(row,i){ var v=fsSalesYearValue(row,i); return v?fmtNum(v.revenue):'—'; }
+  var body;
+  if(rows.length){
+    body=rows.map(function(row){
+      return '<tr><td style="font-weight:600;">'+esc(fsSalesProductName(p,row.productId))+'</td>'+
+        ys.map(function(_,i){ return '<td class="num-cell">'+numSpan(cell(row,i))+'</td>'; }).join('')+'</tr>';
+    }).join('');
+  } else {
+    body='<tr><td style="font-weight:600;">کل فروش</td>'+
+      ys.map(function(_,i){ return '<td class="num-cell">'+numSpan(fmtNum(model.years[i].revenue))+'</td>'; }).join('')+'</tr>';
+  }
+  var total='<tr><td style="font-weight:800;">جمع</td>'+
+    ys.map(function(_,i){ return '<td class="num-cell"><strong>'+numSpan(fmtNum(rows.length?fsSalesTotalForYear(p,i):model.years[i].revenue))+'</strong></td>'; }).join('')+'</tr>';
+  return '<div class="section-head"><div><h3>درآمد فروش به تفکیک محصول</h3>'+
+    '<span class="hint">مقدار × نرخ واحد، سال به سال</span></div></div>'+
+    '<div class="table-wrap"><table><thead><tr><th>محصول</th>'+ys.map(function(y){ return '<th class="num-cell">'+esc(y)+'</th>'; }).join('')+'</tr></thead><tbody>'+body+total+'</tbody></table></div>';
+}
 function buildFSResultsTab(p){
 
   var model =
@@ -20935,6 +20962,8 @@ function buildFSResultsTab(p){
 
 
   return (
+
+    buildFSResultsSalesTable(p)+
 
     '<div class="section-head">'+
 

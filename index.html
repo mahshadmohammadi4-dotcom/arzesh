@@ -14346,13 +14346,18 @@ function buildReportTab(p){
 
   return '<div class="report-toolbar no-print">'+
       '<div><h3 style="font-size:14.5px;">'+esc(p.report.title)+'</h3><span class="hint">'+p.report.pageKeys.length+' صفحه در فهرست مطالب</span></div>'+
-      '<div style="display:flex;gap:8px;">'+
-        (canSignThis ? '<button class="btn primary small" onclick="signReport(\''+p.id+'\')">امضا به‌عنوان تأییدکننده</button>' : '')+
-        (can('editReport') ? '<button class="btn small" onclick="openApproverEditor(\''+p.id+'\')">تأییدکنندگان</button>' : '')+
-        (can('editReport') ? '<button class="btn small" onclick="openTocEditor(\''+p.id+'\')">تنظیم فهرست گزارش</button>' : '')+
-        '<button class="btn small" onclick="openWatchlistPicker(\''+p.id+'\')">افزودن به واچ‌لیست</button>'+
-        '<button class="btn small" onclick="printCurrentReport()">چاپ / خروجی PDF</button>'+
-      '</div>'+
+       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'+
+         (p.type==='FEASIBILITY_STUDY'
+           ? '<select class="role-select" style="background:var(--surface-2);color:var(--ink);border-color:var(--border-strong);padding:7px 9px;border-radius:7px;font-size:11.5px;" onchange="applyFSReportGoal(\''+p.id+'\',this.value)">'+
+             Object.keys(FS_REPORT_GOALS).map(function(k){ return '<option value="'+k+'"'+((p.reportGoal||'banking')===k?' selected':'')+'>'+esc(FS_REPORT_GOALS[k].label)+'</option>'; }).join('')+
+           '</select>'
+           : '')+
+         (canSignThis ? '<button class="btn primary small" onclick="signReport(\''+p.id+'\')">امضا به‌عنوان تأییدکننده</button>' : '')+
+         (can('editReport') ? '<button class="btn small" onclick="openApproverEditor(\''+p.id+'\')">تأییدکنندگان</button>' : '')+
+         (can('editReport') ? '<button class="btn small" onclick="openTocEditor(\''+p.id+'\')">تنظیم فهرست گزارش</button>' : '')+
+         '<button class="btn small" onclick="openWatchlistPicker(\''+p.id+'\')">افزودن به واچ‌لیست</button>'+
+         '<button class="btn small" onclick="printCurrentReport()">چاپ / خروجی PDF</button>'+
+       '</div>'+
     '</div>'+
     (UI.tocDraft && UI.tocDraft.projectId===p.id ? buildTocEditor(p) : '')+
     buildReportPagesHTML(p, false)+
@@ -24219,6 +24224,29 @@ function applyFSUnderstanding(pid){
   p.fsUnderstanding = { confirmed:true, at:new Date() };
   render();
 }
+var FS_REPORT_GOALS = {
+  banking:{ label:'گزارش بانکی', hint:'برای ارائه به بانک/موسسه مالی (تمایل به کامل‌ترین فهرست مالی/ریسک)', pageKeys:['feasibility_cover_page','feasibility_report_meta','feasibility_disclaimer','feasibility_foundational_assumptions','feasibility_company_intro','feasibility_financial_and_ratios','feasibility_executive_summary','feasibility_risk_analysis'] },
+  management:{ label:'گزارش مدیریتی', hint:'برای مدیران/تصمیم‌گیران داخلی (خلاصه و متمرکز)', pageKeys:['feasibility_cover_page','feasibility_report_meta','feasibility_foundational_assumptions','feasibility_financial_and_ratios','feasibility_executive_summary'] },
+  comprehensive:{ label:'گزارش جامع', hint:'گزارش کامل برای ذی‌نفعان متنوع', pageKeys:['feasibility_cover_page','feasibility_report_meta','feasibility_disclaimer','feasibility_foundational_assumptions','feasibility_company_intro','feasibility_financial_and_ratios','feasibility_executive_summary','feasibility_risk_analysis'] }
+};
+function applyFSReportGoal(pid, goal){
+  var p=DB.projects[pid], g=FS_REPORT_GOALS[goal]; if(!g) return;
+  p.reportGoal = goal;
+  p.report.pageKeys = g.pageKeys.slice();
+  p.pages = {};
+  p.report.pageKeys.forEach(function(pk){ generatePage(p, pk, 'سیستم (هدف گزارش)'); });
+  render();
+}
+function buildFSReportGoalPicker(p){
+  var cur=p.reportGoal||'banking';
+  return '<div class="card card-pad" style="margin-bottom:16px;border-color:var(--accent);background:var(--accent-tint);">'+
+    '<div style="font-weight:700;font-size:13px;margin-bottom:8px;">🎯 هدف گزارش (نوع گزارش)</div>'+
+    '<select class="wiz-field" onchange="applyFSReportGoal(\''+p.id+'\',this.value)">'+
+      Object.keys(FS_REPORT_GOALS).map(function(k){ return '<option value="'+k+'"'+((cur===k)?' selected':'')+'>'+FS_REPORT_GOALS[k].label+'</option>'; }).join('')+
+    '</select>'+
+    '<div style="font-size:11px;color:var(--ink-muted);margin-top:8px;">'+esc(FS_REPORT_GOALS[cur].hint)+'</div>'+
+  '</div>';
+}
 function buildFSUnderstanding(p){
   var d = p.feasibilityDescription || '';
   var base = (p.questionnaire && p.questionnaire.base) || {};
@@ -24399,6 +24427,8 @@ function buildFSBaseQuestionnaire(p){
     '</div>'+
 
     buildFSUnderstanding(p)+
+
+    buildFSReportGoalPicker(p)+
 
 
 

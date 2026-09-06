@@ -21389,9 +21389,11 @@ function fsUpdateOperatingRow(
   row.source =
     'MANUAL_ENTRY';
 
+  row.edited =
+    true;
 
   row.confirmed =
-    true;
+    false;
 
 
   render();
@@ -21692,14 +21694,18 @@ function buildFSOperatingSimpleCategory(
 
           '<tr class="'+
             (
-              row.source === 'AI_SUGGESTED' &&
-              !row.confirmed
-                ?
-                'fs-cost-row ai-suggested'
-                :
-                'fs-cost-row'
+              row.edited
+                ? 'fs-cost-row user-edited'
+                : (
+                  row.source === 'AI_SUGGESTED' && !row.confirmed
+                    ? 'fs-cost-row ai-suggested'
+                    : 'fs-cost-row'
+                )
             )+
           '">'+
+          (row.edited
+            ? '<td><span class="data-state-dot blue" style="display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:middle;" title="ویرایش‌شده توسط شما"></span></td>'
+            : '')+
 
 
             (
@@ -21796,24 +21802,6 @@ function buildFSOperatingSimpleCategory(
             '<td>'+
               '<div class="fs-row-actions">'+
 
-                (
-                  row.source === 'AI_SUGGESTED' &&
-                  !row.confirmed
-                    ?
-
-                    '<button class="btn small" '+
-                      'onclick="fsAcceptOperatingRow(\''+
-                      p.id+'\',\''+
-                      mode+'\',\''+
-                      category+'\',\''+
-                      row.id+
-                      '\')">'+
-                      'تأیید'+
-                    '</button>'
-
-                    :
-                    ''
-                )+
 
                 '<button class="btn small ghost" '+
                   'onclick="fsRemoveOperatingRow(\''+
@@ -21899,6 +21887,7 @@ function buildFSOperatingSimpleCategory(
       '</button>'+
 
       fsXButton(p.id, 'op:'+mode+':'+category)+
+      '<button type="button" class="btn small fs-add-row '+(getOperatingCategoryConfirm(p,mode,category)?'primary':'')+'" style="margin-inline-start:8px;" onclick="fsConfirmOperatingCategory(\''+p.id+'\',\''+mode+'\',\''+category+'\')">'+(getOperatingCategoryConfirm(p,mode,category)?'✔ تأیید شده':'✔ تأیید کل جدول')+'</button>'+
 
 
 
@@ -21932,14 +21921,18 @@ function buildFSOperatingLaborCategory(
 
           '<tr class="'+
             (
-              row.source === 'AI_SUGGESTED' &&
-              !row.confirmed
-                ?
-                'fs-cost-row ai-suggested'
-                :
-                'fs-cost-row'
+              row.edited
+                ? 'fs-cost-row user-edited'
+                : (
+                  row.source === 'AI_SUGGESTED' && !row.confirmed
+                    ? 'fs-cost-row ai-suggested'
+                    : 'fs-cost-row'
+                )
             )+
           '">'+
+          (row.edited
+            ? '<td><span class="data-state-dot blue" style="display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:middle;" title="ویرایش‌شده توسط شما"></span></td>'
+            : '')+
 
 
             (
@@ -22044,24 +22037,6 @@ function buildFSOperatingLaborCategory(
             '<td>'+
               '<div class="fs-row-actions">'+
 
-                (
-                  row.source === 'AI_SUGGESTED' &&
-                  !row.confirmed
-                    ?
-
-                    '<button class="btn small" '+
-                      'onclick="fsAcceptOperatingRow(\''+
-                      p.id+'\',\''+
-                      mode+'\',\''+
-                      category+'\',\''+
-                      row.id+
-                      '\')">'+
-                      'تأیید'+
-                    '</button>'
-
-                    :
-                    ''
-                )+
 
                 '<button class="btn small ghost" '+
                   'onclick="fsRemoveOperatingRow(\''+
@@ -22150,6 +22125,7 @@ function buildFSOperatingLaborCategory(
       '</button>'+
 
       fsXButton(p.id, 'op:'+mode+':'+category)+
+      '<button type="button" class="btn small fs-add-row '+(getOperatingCategoryConfirm(p,mode,category)?'primary':'')+'" style="margin-inline-start:8px;" onclick="fsConfirmOperatingCategory(\''+p.id+'\',\''+mode+'\',\''+category+'\')">'+(getOperatingCategoryConfirm(p,mode,category)?'✔ تأیید شده':'✔ تأیید کل جدول')+'</button>'+
 
 
     '</div>'
@@ -23520,6 +23496,17 @@ function fsFindCustomTable(p, id){
   if (!d || !Array.isArray(d.customTables)) return null;
   var found = null; d.customTables.forEach(function(t){ if (t.id===id) found=t; });
   return found;
+}
+function fsConfirmOperatingCategory(pid, mode, category){
+  var data = ensureFSOperatingCostData(DB.projects[pid]);
+  var arr = data[mode][category];
+  if (arr) arr.forEach(function(r){ r.confirmed = true; });
+  render();
+}
+function getOperatingCategoryConfirm(p, mode, category){
+  var data = ensureFSOperatingCostData(p);
+  var arr = data[mode][category];
+  return !!(arr && arr.length) && arr.every(function(r){ return !!r.confirmed; });
 }
 function fsConfirmFixedCategory(pid, cat){
   var p = DB.projects[pid], d = fsEnsureFixedObject(p);
